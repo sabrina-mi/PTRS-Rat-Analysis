@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="sabrina-mi" />
+
+<meta name="date" content="2023-04-04" />
+
+<title>Predict Rat Traits with PTRS</title>
+
+<script src="site_libs/header-attrs-2.20/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<link rel="icon" href="https://github.com/workflowr/workflowr-assets/raw/main/img/reproducible.png">
+<!-- Add a small amount of space between sections. -->
+<style type="text/css">
+div.section {
+  padding-top: 12px;
+}
+</style>
+
+
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">PTRS-Rat-Analysis</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+<li>
+  <a href="license.html">License</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis">
+    <span class="fab fa-github"></span>
+     
+    Source code
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Predict Rat Traits with PTRS</h1>
+<h4 class="author">sabrina-mi</h4>
+<h4 class="date">2023-04-04</h4>
+
+</div>
+
+
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+workflowr <span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span>
+</button>
+</p>
+<div id="workflowr-report" class="collapse">
+<ul class="nav nav-tabs">
+<li class="active">
+<a data-toggle="tab" href="#summary">Summary</a>
+</li>
+<li>
+<a data-toggle="tab" href="#checks"> Checks <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+</a>
+</li>
+<li>
+<a data-toggle="tab" href="#versions">Past versions</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="summary" class="tab-pane fade in active">
+<p>
+<strong>Last updated:</strong> 2023-04-04
+</p>
+<p>
+<strong>Checks:</strong> <span
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> 0
+</p>
+<p>
+<strong>Knit directory:</strong> <code>PTRS-Rat-Analysis/</code> <span
+class="glyphicon glyphicon-question-sign" aria-hidden="true"
+title="This is the local directory in which the code in this file was executed.">
+</span>
+</p>
+<p>
+This reproducible <a href="https://rmarkdown.rstudio.com">R Markdown</a>
+analysis was created with <a
+  href="https://github.com/workflowr/workflowr">workflowr</a> (version
+1.7.0). The <em>Checks</em> tab describes the reproducibility checks
+that were applied when the results were created. The <em>Past
+versions</em> tab lists the development history.
+</p>
+<hr>
+</div>
+<div id="checks" class="tab-pane fade">
+<div id="workflowr-checks" class="panel-group">
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
+</a>
+</p>
+</div>
+<div id="strongRMarkdownfilestronguptodate"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great! Since the R Markdown file has been committed to the Git
+repository, you know the exact version of the code that produced these
+results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20230404code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20230404)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20230404code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20230404)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+</p>
+</div>
+<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Using relative paths to the files within your workflowr
+project makes it easier to run your code on other machines.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree7dd0181ef955b659eb123f567613a6dc1c1ff8c1targetblank7dd0181a">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Repository version:</strong>
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/7dd0181ef955b659eb123f567613a6dc1c1ff8c1" target="_blank">7dd0181</a>
+</a>
+</p>
+</div>
+<div
+id="strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree7dd0181ef955b659eb123f567613a6dc1c1ff8c1targetblank7dd0181a"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Great! You are using Git for version control. Tracking code development
+and connecting the code version to the results is critical for
+reproducibility.
+</p>
+<p>
+The results in this page were generated with repository version
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/7dd0181ef955b659eb123f567613a6dc1c1ff8c1" target="_blank">7dd0181</a>.
+See the <em>Past versions</em> tab to see a history of the changes made
+to the R Markdown and HTML files.
+</p>
+<p>
+Note that you need to be careful to ensure that all relevant files for
+the analysis have been committed to Git prior to generating the results
+(you can use <code>wflow_publish</code> or
+<code>wflow_git_commit</code>). workflowr only checks the R Markdown
+file, but you know if there are other scripts or data files that it
+depends on. Below is the status of the Git repository when the results
+were generated:
+</p>
+<pre><code>
+Ignored files:
+    Ignored:    .DS_Store
+
+</code></pre>
+<p>
+Note that any generated files, e.g. HTML, png, CSS, etc., are not
+included in this status report because it is ok for generated content to
+have uncommitted changes.
+</p>
+</div>
+</div>
+</div>
+</div>
+<hr>
+</div>
+<div id="versions" class="tab-pane fade">
+
+<p>
+These are the previous versions of the repository in which changes were
+made to the R Markdown (<code>analysis/PTRS_Predict.Rmd</code>) and HTML
+(<code>docs/PTRS_Predict.html</code>) files. If you’ve configured a
+remote Git repository (see <code>?wflow_git_remote</code>), click on the
+hyperlinks in the table below to view the files as they were in that
+past version.
+</p>
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+File
+</th>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+<th>
+Message
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/blob/7dd0181ef955b659eb123f567613a6dc1c1ff8c1/analysis/PTRS_Predict.Rmd" target="_blank">7dd0181</a>
+</td>
+<td>
+sabrina-mi
+</td>
+<td>
+2023-04-04
+</td>
+<td>
+migrated box analysis files
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.1     ✔ readr     2.1.4
+✔ forcats   1.0.0     ✔ stringr   1.5.0
+✔ ggplot2   3.4.1     ✔ tibble    3.2.1
+✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+✔ purrr     1.0.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the ]8;;http://conflicted.r-lib.org/conflicted package]8;; to force all conflicts to become errors</code></pre>
+<pre class="r"><code>library(data.table)</code></pre>
+<pre><code>
+Attaching package: &#39;data.table&#39;
+
+The following objects are masked from &#39;package:lubridate&#39;:
+
+    hour, isoweek, mday, minute, month, quarter, second, wday, week,
+    yday, year
+
+The following objects are masked from &#39;package:dplyr&#39;:
+
+    between, first, last
+
+The following object is masked from &#39;package:purrr&#39;:
+
+    transpose</code></pre>
+<pre class="r"><code>library(RSQLite)
+library(glmnet)</code></pre>
+<pre><code>Loading required package: Matrix
+
+Attaching package: &#39;Matrix&#39;
+
+The following objects are masked from &#39;package:tidyr&#39;:
+
+    expand, pack, unpack
+
+Loaded glmnet 4.1-6</code></pre>
+<pre class="r"><code>library(data.table)
+&quot;%&amp;%&quot; = function(a,b) paste(a,b,sep=&quot;&quot;)
+devtools::source_gist(&quot;ee5f67abddd0b761ee24410ea71c41aa&quot;)</code></pre>
+<pre><code>ℹ Sourcing gist &quot;ee5f67abddd0b761ee24410ea71c41aa&quot;
+ℹ SHA-1 hash of file is &quot;c56941964697a118c351c3f81322a221fa13a1b3&quot;</code></pre>
+<pre class="r"><code>devtools::source_gist(&quot;38431b74c6c0bf90c12f&quot;)</code></pre>
+<pre><code>ℹ Sourcing gist &quot;38431b74c6c0bf90c12f&quot;
+ℹ SHA-1 hash of file is &quot;cbeca7fd9bf1602dee41c4f1880cc3a5e8992303&quot;</code></pre>
+<pre class="r"><code>devtools::source_gist(&quot;1e9053c8f35c30396429350a08f33ea7&quot;)</code></pre>
+<pre><code>ℹ Sourcing gist &quot;1e9053c8f35c30396429350a08f33ea7&quot;
+ℹ SHA-1 hash of file is &quot;7388784ab8c7c2dc5c3f950dc8a47a1c76e3d7ac&quot;</code></pre>
+<div id="predict-traits-with-yanyus-ptrs-models" class="section level1">
+<h1>Predict Traits with Yanyu’s PTRS models</h1>
+<pre class="r"><code>traits &lt;- c(&quot;height&quot;, &quot;bmi&quot;)
+dir=&quot;/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/&quot;
+
+# folder with PrediXcan results
+results.dir &lt;- dir %&amp;% &quot;RatXcan/Results/&quot;
+# folder with PTRS weights, predicted traits will output here
+data.dir &lt;- dir %&amp;%&quot;RatData/&quot;</code></pre>
+<div id="data-wrangling" class="section level2">
+<h2>Data Wrangling</h2>
+<pre class="r"><code>orth.rats &lt;- suppressMessages(read_tsv(dir %&amp;% &quot;RatXcan/ortholog_genes_rats_humans.tsv&quot;))
+
+pred_expr &lt;- suppressMessages(read_tsv(results.dir %&amp;% &quot;Br_EN__predict.txt&quot;))
+
+pred_expr$IID = pred_expr$FID
+
+#filter only for genes that have a human ortholog
+pred_expr &lt;- pred_expr %&gt;% select(c(IID, intersect(colnames(pred_expr), orth.rats$rnorvegicus_homolog_ensembl_gene) ))
+
+
+## workaround, since pred_expr
+
+#change name to human ensembl id in humans
+colnames(pred_expr)[2:ncol(pred_expr)] &lt;- orth.rats[match(colnames(pred_expr)[2:ncol(pred_expr)], orth.rats$rnorvegicus_homolog_ensembl_gene), 1] %&gt;% .[[&quot;ensembl_gene_id&quot;]]</code></pre>
+<pre class="r"><code>fn_weights = function(trait)
+{
+  weights &lt;- read_tsv(dir %&amp;% &quot;PTRS-models/elastic_net_alpha_0.1_British.export_model/weights.&quot; %&amp;% trait %&amp;% &quot;.tsv.gz&quot;)
+  weights$gene_id &lt;- sapply(strsplit(weights$gene_id, &quot;\\.&quot;), `[`, 1)
+  rownames(weights) &lt;- weights$gene_id
+  weights &lt;- weights %&gt;% rename(gene_name = gene_id)
+  return(weights)
+}</code></pre>
+<pre class="r"><code>for(trait in traits) {
+  weights &lt;- fn_weights(trait)
+  pred_trait &lt;- fn_generate_trait(pred_expr, weights)
+  saveRDS(pred_trait, results.dir %&amp;% &quot;rat_pred_&quot; %&amp;% trait %&amp;% &quot;_w_Human_best_PTRS.RDS&quot;)
+  return(pred_trait)
+}</code></pre>
+</div>
+<div id="compare-with-human-results" class="section level2">
+<h2>Compare with Human Results</h2>
+<pre class="r"><code>pgp_pred_expr &lt;- read_tsv(dir %&amp;% &quot;SPrediXcan/PGP/PGP_Whole_Blood__predict.txt&quot;) %&gt;% select(-c(FID))</code></pre>
+<pre class="r"><code>fn_pgp_trait = function(trait)
+{
+  weights &lt;- read_tsv(dir %&amp;% &quot;PTRS-models/elastic_net_alpha_0.1_British.export_model/weights.&quot; %&amp;% trait %&amp;% &quot;.tsv.gz&quot;) %&gt;% rename(gene_name = gene_id)
+  # load phenotype data
+  db &lt;- &quot;/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/web-data/2021-04-21-personal-genomes-project-data/repgp-data.sqlite3&quot;
+  sqlite.driver &lt;- dbDriver(&quot;SQLite&quot;)
+  conn &lt;- dbConnect(RSQLite::SQLite(), db)
+  dbListTables(conn)
+  users &lt;- dbGetQuery(conn, &#39;select * from users&#39;)
+  dbDisconnect(conn)
+  pheno &lt;- users  %&gt;% select(c(sample, trait)) %&gt;% na.omit()
+  n_genes = as.matrix(apply(weights[,2:ncol(weights)], 2, function(x) sum(x != 0 )))
+  pgp_pred_trait &lt;- fn_generate_trait(pgp_pred_expr, weights)
+  pheno &lt;- pheno[na.omit(match(rownames(pgp_pred_trait), pheno$sample)),]
+  return(list(&quot;pheno&quot;= pheno, &quot;pred_trait&quot; = pgp_pred_trait, &quot;n_genes&quot; = n_genes))
+}</code></pre>
+</div>
+<div id="compute-correlations" class="section level2">
+<h2>compute correlations</h2>
+<pre class="r"><code>fn_corr = function(pheno, pred_trait, n_genes, RDS){
+  trait_df &lt;- data.frame(estimate = numeric(), pvalue = numeric(), model = character(), n_genes_in_model = numeric(), conf.int.min = numeric(), conf.int.max = numeric())
+  tempo &lt;- pred_trait[na.omit(match(pheno[,1], rownames(pred_trait))), ]
+  for(i in 1:ncol(tempo)){
+    cor = cor.test(pheno[,2], tempo[,i])
+    trait_df[i,1] &lt;- cor$estimate
+    trait_df[i,2] &lt;- cor$p.value
+    trait_df[i,3] &lt;- paste(&quot;model&quot;, i, sep = &quot;_&quot;)
+    trait_df[i,4] &lt;- n_genes[i,1]
+    trait_df[i,5] &lt;- cor$conf.int[1]
+    trait_df[i,6] &lt;- cor$conf.int[2]
+    saveRDS(trait_df, RDS)
+  }
+  return(trait_df)
+} </code></pre>
+<pre class="r"><code>for (trait in traits){
+  dfs &lt;- fn_pgp_trait(trait)
+  pheno &lt;- dfs$pheno
+  pred_trait &lt;- dfs$pgp_pred_trait
+  n_genes &lt;- dfs$n_genes
+  RDS &lt;- data.dir %&amp;% &quot;corr_&quot; %&amp;% trait %&amp;% &quot;_indiv_PTRS.RDS&quot;
+  trait_df &lt;- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
+}</code></pre>
+<pre class="r"><code>for (trait in traits){
+  dfs &lt;- fn_pgp_trait(trait)
+  pheno &lt;- dfs$pheno
+  pgp_pred_trait &lt;- dfs$pred_trait
+  n_genes &lt;- dfs$n_genes
+  RDS &lt;- data.dir %&amp;% &quot;corr_&quot; %&amp;% trait %&amp;% &quot;_indiv_PTRS.RDS&quot;
+  trait_df &lt;- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
+}</code></pre>
+<pre class="r"><code>fn_corr_plot = function(file,title){
+  trait_df &lt;- readRDS(file)
+  p1 = ggplot(trait_df, aes(n_genes_in_model, estimate)) + geom_errorbar(aes(ymin = conf.int.min, ymax = conf.int.max ), width=0.2,  color=&quot;gray&quot;) + geom_point(color = &quot;purple&quot;, position=&quot;jitter&quot;) + geom_line(color = &quot;purple&quot;)   + xlab(&quot;Number of genes in each model&quot;) + ylab(&quot;Correlation Coefficient (r)&quot;) + ggtitle(title) + theme_bw()
+  return(p1)
+}</code></pre>
+</div>
+<div id="plot-ptrs-correlations-for-rats" class="section level2">
+<h2>Plot PTRS Correlations for Rats</h2>
+<pre class="r"><code>pheno_file &lt;- read.csv(data.dir %&amp;% &quot;phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.csv&quot;)</code></pre>
+<pre class="r"><code>traits &lt;- c(&quot;height&quot;)
+rat_analogue &lt;- c(&quot;length_w_tail_cm&quot;)
+names(rat_analogue) &lt;- traits</code></pre>
+<pre class="r"><code>for (trait in traits) {
+  # data wrangling
+  pheno &lt;- pheno_file %&gt;% dplyr::select(c(rfid, rat_analogue[[trait]])) %&gt;% na.omit()
+  weights &lt;- read_tsv(dir %&amp;% &quot;PTRS-models/elastic_net_alpha_0.1_British.export_model/weights.&quot; %&amp;% trait %&amp;% &quot;.tsv.gz&quot;) %&gt;% rename(gene_name = gene_id)
+  n_genes = as.matrix(apply(weights[,2:ncol(weights)], 2, function(x) sum(x != 0 )))
+  # corr inputs
+  n_genes &lt;- n_genes[-1, , drop = FALSE]
+  pred_trait &lt;- readRDS(results.dir %&amp;% &quot;rat_pred_&quot; %&amp;% trait %&amp;% &quot;_w_Human_best_PTRS.RDS&quot;)[,-1]
+  pheno &lt;- pheno[na.omit(match(rownames(pred_trait), pheno$rfid)),]
+  RDS &lt;- results.dir %&amp;% &quot;corr_&quot; %&amp;% rat_analogue[[trait]] %&amp;% &quot;_rat_PTRS.RDS&quot;
+  # output dataframe for plot
+  trait_df &lt;- fn_corr(pheno, pred_trait, n_genes, RDS)
+  # plot
+}</code></pre>
+<pre><code>Rows: 7044 Columns: 39
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: &quot;\t&quot;
+chr  (1): gene_id
+dbl (38): model_0, model_1, model_2, model_3, model_4, model_5, model_6, mod...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre><code>Warning in cor(x, y): the standard deviation is zero</code></pre>
+<pre class="r"><code>fn_corr_plot(results.dir %&amp;% &quot;corr_length_w_tail_cm_rat_PTRS.RDS&quot;, &quot;Performance of PTRS for Rat Bodylength&quot;)</code></pre>
+<pre><code>Warning: Removed 1 rows containing missing values (`geom_point()`).</code></pre>
+<pre><code>Warning: Removed 1 row containing missing values (`geom_line()`).</code></pre>
+<p><img src="figure/PTRS_Predict.Rmd/plot-1.png" width="672" style="display: block; margin: auto;" /></p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre class="r"><code>sessionInfo()</code></pre>
+<pre><code>R version 4.2.2 (2022-10-31)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur ... 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] glmnet_4.1-6      Matrix_1.5-3      RSQLite_2.3.0     data.table_1.14.8
+ [5] lubridate_1.9.2   forcats_1.0.0     stringr_1.5.0     dplyr_1.1.1      
+ [9] purrr_1.0.1       readr_2.1.4       tidyr_1.3.0       tibble_3.2.1     
+[13] ggplot2_3.4.1     tidyverse_2.0.0   workflowr_1.7.0  
+
+loaded via a namespace (and not attached):
+ [1] fs_1.6.1          usethis_2.1.6     devtools_2.4.5    bit64_4.0.5      
+ [5] httr_1.4.5        rprojroot_2.0.3   gh_1.4.0          tools_4.2.2      
+ [9] profvis_0.3.7     bslib_0.4.2       utf8_1.2.3        R6_2.5.1         
+[13] DBI_1.1.3         colorspace_2.1-0  urlchecker_1.0.1  withr_2.5.0      
+[17] tidyselect_1.2.0  prettyunits_1.1.1 processx_3.8.0    curl_5.0.0       
+[21] bit_4.0.5         compiler_4.2.2    git2r_0.31.0      httr2_0.2.2      
+[25] cli_3.6.0         labeling_0.4.2    sass_0.4.5        scales_1.2.1     
+[29] callr_3.7.3       rappdirs_0.3.3    digest_0.6.31     rmarkdown_2.20   
+[33] pkgconfig_2.0.3   htmltools_0.5.4   sessioninfo_1.2.2 highr_0.10       
+[37] fastmap_1.1.1     htmlwidgets_1.6.2 rlang_1.1.0       rstudioapi_0.14  
+[41] shiny_1.7.4       farver_2.1.1      shape_1.4.6       jquerylib_0.1.4  
+[45] generics_0.1.3    jsonlite_1.8.4    vroom_1.6.1       magrittr_2.0.3   
+[49] Rcpp_1.0.10       munsell_0.5.0     fansi_1.0.4       lifecycle_1.0.3  
+[53] stringi_1.7.12    whisker_0.4.1     yaml_2.3.7        pkgbuild_1.4.0   
+[57] grid_4.2.2        blob_1.2.4        parallel_4.2.2    promises_1.2.0.1 
+[61] crayon_1.5.2      miniUI_0.1.1.1    lattice_0.20-45   splines_4.2.2    
+[65] hms_1.1.3         knitr_1.42        ps_1.7.3          pillar_1.9.0     
+[69] codetools_0.2-19  pkgload_1.3.2     glue_1.6.2        evaluate_0.20    
+[73] getPass_0.2-2     remotes_2.4.2     vctrs_0.6.1       tzdb_0.3.0       
+[77] httpuv_1.6.9      foreach_1.5.2     gtable_0.3.3      cachem_1.0.7     
+[81] xfun_0.37         mime_0.12         xtable_1.8-4      gitcreds_0.1.2   
+[85] later_1.3.0       survival_3.5-5    iterators_1.0.14  memoise_2.0.1    
+[89] timechange_0.2.0  ellipsis_0.3.2   </code></pre>
+</div>
+</div>
+</div>
+
+
+<!-- Adjust MathJax settings so that all math formulae are shown using
+TeX fonts only; see
+https://docs.mathjax.org/en/latest/web/configuration.html. This will make
+the presentation more consistent at the cost of the webpage sometimes
+taking slightly longer to load. Note that this only works because the
+footer is added to webpages before the MathJax javascript. -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
