@@ -1,0 +1,318 @@
+---
+title: "RatXcan Manhattan Plots"
+author: "sabrina-mi"
+date: "2023-04-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## setup
+
+```{r}
+library(readr)
+library(tidyverse)
+"%&%" = function(a,b) paste(a,b,sep="")
+dir="/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/"
+data.dir <- "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatData/"
+full_df <- readRDS(dir %&% "assoc_full_df.RDS")
+
+```
+## plot associations
+
+```{r}
+orth.rats <- read_tsv(dir %&% "ortholog_genes_rats_humans.tsv")
+
+full_df <- full_df %>% mutate(gene_name = orth.rats[match(full_df$gene, orth.rats$rnorvegicus_homolog_ensembl_gene),4]$rnorvegicus_homolog_associated_gene_name, .before = effect)
+
+
+full_df$metabolic_trait[full_df$metabolic_trait == "bmi_w_tail" ] <- "Body Mass Index (BMI) with tail"
+full_df$metabolic_trait[full_df$metabolic_trait == "bmi_wo_tail" ] <- "Body Mass Index (BMI) without tail"
+full_df$metabolic_trait[full_df$metabolic_trait == "body_weight_g" ] <- "Body weight"
+full_df$metabolic_trait[full_df$metabolic_trait == "length_w_tail_cm" ] <- "Length with tail"
+full_df$metabolic_trait[full_df$metabolic_trait == "length_wo_tail_cm" ] <- "Length without tail"
+
+```
+
+## Manhattan Plot
+
+```{r}
+gene_annot <- readRDS(data.dir %&% "gene_annotation.RDS")  %>% select(c("chr", "gene_id", "start", "end")) %>% rename(gene = gene_id)
+
+tempo_manhatt <- inner_join(gene_annot, full_df, by = "gene")
+tempo_manhatt$chr <- as.numeric(tempo_manhatt$chr)
+
+```
+
+### BMI without Tail
+
+```{r manhat plot}
+library(ggrepel)
+bmi_wo_tail_manhat <- tempo_manhatt %>% filter(metabolic_trait == "Body Mass Index (BMI) without tail") 
+bmi_wo_tail_manhat <- bmi_wo_tail_manhat %>% mutate(gene_name = orth.rats[match(bmi_wo_tail_manhat$gene, orth.rats$rnorvegicus_homolog_ensembl_gene), 4]$rnorvegicus_homolog_associated_gene_name)
+
+data_cum<- bmi_wo_tail_manhat %>% 
+  group_by(chr) %>% 
+  summarise(max_bp = as.numeric(max(start))) %>% 
+  mutate(bp_add = lag(cumsum(max_bp), default = 0)) %>% 
+  select(chr, bp_add)
+
+gwas_data <- bmi_wo_tail_manhat %>% 
+  inner_join(data_cum, by = "chr") %>% 
+  mutate(bp_cum = start + bp_add)
+
+
+axis_set <- gwas_data %>% 
+  group_by(chr) %>% 
+  summarize(center = mean(bp_cum))
+
+ylim <- gwas_data %>% 
+  filter(pvalue == min(pvalue)) %>% 
+  mutate(ylim = abs(floor(log10(pvalue))) + 2) %>% 
+  pull(ylim)
+
+sig <-  0.05/(5661)
+
+bmi_manhplot <- ggplot(gwas_data, aes(x = bp_cum, y = -log10(pvalue), color = as_factor(chr), size = -log10(pvalue))) +
+  geom_hline(yintercept = -log10(sig), color = "grey40", linetype = "dashed") + 
+  geom_hline(yintercept = -log10(0.0001), color = "red", linetype = "dashed") + 
+  geom_point(alpha = 0.75, shape = ifelse((gwas_data$zscore >= 4.863456), 17, ifelse(gwas_data$zscore <= -4.863456, 25, 19)), fill = "dodgerblue4") +
+#  geom_label_repel(aes(label=ifelse((pvalue <=  sig & gene_name %in% human_bmi_genes$rat_gene), gene_name, "")), size = 6) + 
+  ylim(c(0,8)) + 
+  scale_x_continuous(label = axis_set$chr, breaks = axis_set$center) +
+  scale_color_manual(values = rep(c("dodgerblue4", "midnightblue"), unique(length(axis_set$chr)))) +
+  scale_size_continuous(range = c(0.5,3)) +
+  labs(x = NULL, 
+       y = expression(-log[10](italic(p)))) + 
+  theme_minimal() +
+  theme( 
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 12), 
+    axis.text.y = element_text( size = 12,  vjust = 0), 
+    axis.title = element_text(size = 20))
+
+bmi_manhplot
+
+```
+
+
+### BMI with Tail
+
+```{r}
+bmi_w_tail_manhat <- tempo_manhatt %>% filter(metabolic_trait == "Body Mass Index (BMI) with tail") 
+bmi_w_tail_manhat <- bmi_w_tail_manhat %>% mutate(gene_name = orth.rats[match(bmi_w_tail_manhat$gene, orth.rats$rnorvegicus_homolog_ensembl_gene), 4]$rnorvegicus_homolog_associated_gene_name)
+
+
+data_cum<- bmi_w_tail_manhat %>% 
+  group_by(chr) %>% 
+  summarise(max_bp = as.numeric(max(start))) %>% 
+  mutate(bp_add = lag(cumsum(max_bp), default = 0)) %>% 
+  select(chr, bp_add)
+
+gwas_data <- bmi_w_tail_manhat %>% 
+  inner_join(data_cum, by = "chr") %>% 
+  mutate(bp_cum = start + bp_add)
+
+
+axis_set <- gwas_data %>% 
+  group_by(chr) %>% 
+  summarize(center = mean(bp_cum))
+
+ylim <- gwas_data %>% 
+  filter(pvalue == min(pvalue)) %>% 
+  mutate(ylim = abs(floor(log10(pvalue))) + 2) %>% 
+  pull(ylim)
+
+sig <-  0.05/(5661)
+
+bmi_manhplot <- ggplot(gwas_data, aes(x = bp_cum, y = -log10(pvalue), color = as_factor(chr), size = -log10(pvalue))) +
+  geom_hline(yintercept = -log10(sig), color = "grey40", linetype = "dashed") + 
+  geom_hline(yintercept = -log10(0.0001), color = "red", linetype = "dashed") + 
+  geom_point(alpha = 0.75, shape = ifelse((gwas_data$zscore >= 4.863456), 17, ifelse(gwas_data$zscore <= -4.863456, 25, 19)), fill = "dodgerblue4") +
+#  geom_label_repel(aes(label=ifelse((pvalue <=  sig & gene_name %in% human_bmi_genes$rat_gene), gene_name, "")), size = 6) + 
+  ylim(c(0,8)) + 
+  scale_x_continuous(label = axis_set$chr, breaks = axis_set$center) +
+  scale_color_manual(values = rep(c("dodgerblue4", "midnightblue"), unique(length(axis_set$chr)))) +
+  scale_size_continuous(range = c(0.5,3)) +
+  labs(x = NULL, 
+       y = expression(-log[10](italic(p)))) + 
+  theme_minimal() +
+  theme( 
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 12), 
+    axis.text.y = element_text( size = 12,  vjust = 0), 
+    axis.title = element_text(size = 20))
+
+bmi_manhplot
+```
+
+
+## length without tail
+
+
+```{r}
+length_wo_tail_manhat <- tempo_manhatt %>% filter(metabolic_trait == "Length without tail") 
+length_wo_tail_manhat <- length_wo_tail_manhat %>% mutate(gene_name = orth.rats[match(length_wo_tail_manhat$gene, orth.rats$rnorvegicus_homolog_ensembl_gene), 4]$rnorvegicus_homolog_associated_gene_name)
+
+data_cum<- length_wo_tail_manhat %>% 
+  group_by(chr) %>% 
+  summarise(max_bp = as.numeric(max(start))) %>% 
+  mutate(bp_add = lag(cumsum(max_bp), default = 0)) %>% 
+  select(chr, bp_add)
+
+gwas_data <- length_wo_tail_manhat %>% 
+  inner_join(data_cum, by = "chr") %>% 
+  mutate(bp_cum = start + bp_add)
+
+
+axis_set <- gwas_data %>% 
+  group_by(chr) %>% 
+  summarize(center = mean(bp_cum))
+
+ylim <- gwas_data %>% 
+  filter(pvalue == min(pvalue)) %>% 
+  mutate(ylim = abs(floor(log10(pvalue))) + 2) %>% 
+  pull(ylim)
+
+sig <-   0.05/(5661)
+
+length_manhplot <- ggplot(gwas_data, aes(x = bp_cum, y = -log10(pvalue), 
+                                  color = as_factor(chr), size = -log10(pvalue))) +
+  geom_hline(yintercept = -log10(sig), color = "grey40", linetype = "dashed") + 
+  geom_hline(yintercept = -log10(0.0001), color = "red", linetype = "dashed") + 
+  geom_point(alpha = 0.75, shape = ifelse((gwas_data$zscore >= 4.863456), 17, ifelse(gwas_data$zscore <= -4.863456, 25, 19)), fill = "dodgerblue4") +
+#  geom_label_repel(aes(label=ifelse((pvalue <=  sig & gene_name %in% human_height_genes$rat_gene), gene_name, "")), size = 6) + 
+  ylim(c(0,10)) + 
+  scale_x_continuous(label = axis_set$chr, breaks = axis_set$center) +
+  scale_color_manual(values = rep(c("dodgerblue4", "midnightblue"), unique(length(axis_set$chr)))) +
+  scale_size_continuous(range = c(0.5,3)) +
+  labs(x = NULL, 
+       y = expression(-log[10](italic(p)))) + 
+  theme_minimal() +
+  theme( 
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 12), 
+    axis.text.y = element_text( size = 12,  vjust = 0), 
+    axis.title = element_text(size = 20))
+
+length_manhplot
+
+```
+
+### length with tail
+
+```{r}
+length_w_tail_manhat <- tempo_manhatt %>% filter(metabolic_trait == "Length with tail") 
+length_w_tail_manhat <- length_w_tail_manhat %>% mutate(gene_name = orth.rats[match(length_w_tail_manhat$gene, orth.rats$rnorvegicus_homolog_ensembl_gene), 4]$rnorvegicus_homolog_associated_gene_name)
+
+data_cum<- length_w_tail_manhat %>% 
+  group_by(chr) %>% 
+  summarise(max_bp = as.numeric(max(start))) %>% 
+  mutate(bp_add = lag(cumsum(max_bp), default = 0)) %>% 
+  select(chr, bp_add)
+
+gwas_data <- length_w_tail_manhat %>% 
+  inner_join(data_cum, by = "chr") %>% 
+  mutate(bp_cum = start + bp_add)
+
+
+axis_set <- gwas_data %>% 
+  group_by(chr) %>% 
+  summarize(center = mean(bp_cum))
+
+ylim <- gwas_data %>% 
+  filter(pvalue == min(pvalue)) %>% 
+  mutate(ylim = abs(floor(log10(pvalue))) + 2) %>% 
+  pull(ylim)
+
+sig <-   0.05/(5661)
+
+length_manhplot <- ggplot(gwas_data, aes(x = bp_cum, y = -log10(pvalue), 
+                                  color = as_factor(chr), size = -log10(pvalue))) +
+  geom_hline(yintercept = -log10(sig), color = "grey40", linetype = "dashed") + 
+  geom_hline(yintercept = -log10(0.0001), color = "red", linetype = "dashed") + 
+  geom_point(alpha = 0.75, shape = ifelse((gwas_data$zscore >= 4.863456), 17, ifelse(gwas_data$zscore <= -4.863456, 25, 19)), fill = "dodgerblue4") +
+#  geom_label_repel(aes(label=ifelse((pvalue <=  sig & gene_name %in% human_height_genes$rat_gene), gene_name, "")), size = 6) + 
+  ylim(c(0,10)) + 
+  scale_x_continuous(label = axis_set$chr, breaks = axis_set$center) +
+  scale_color_manual(values = rep(c("dodgerblue4", "midnightblue"), unique(length(axis_set$chr)))) +
+  scale_size_continuous(range = c(0.5,3)) +
+  labs(x = NULL, 
+       y = expression(-log[10](italic(p)))) + 
+  theme_minimal() +
+  theme( 
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 12), 
+    axis.text.y = element_text( size = 12,  vjust = 0), 
+    axis.title = element_text(size = 20))
+
+length_manhplot
+
+```
+
+
+### body weight
+
+```{r}
+body_weight_manhat <- tempo_manhatt %>% filter(metabolic_trait == "Body weight") 
+body_weight_manhat <- body_weight_manhat %>% mutate(gene_name = orth.rats[match(body_weight_manhat$gene, orth.rats$rnorvegicus_homolog_ensembl_gene), 4]$rnorvegicus_homolog_associated_gene_name)
+
+data_cum<- body_weight_manhat %>% 
+  group_by(chr) %>% 
+  summarise(max_bp = as.numeric(max(start))) %>% 
+  mutate(bp_add = lag(cumsum(max_bp), default = 0)) %>% 
+  select(chr, bp_add)
+
+gwas_data <- body_weight_manhat %>% 
+  inner_join(data_cum, by = "chr") %>% 
+  mutate(bp_cum = start + bp_add)
+
+
+axis_set <- gwas_data %>% 
+  group_by(chr) %>% 
+  summarize(center = mean(bp_cum))
+
+ylim <- gwas_data %>% 
+  filter(pvalue == min(pvalue)) %>% 
+  mutate(ylim = abs(floor(log10(pvalue))) + 2) %>% 
+  pull(ylim)
+
+sig <-   0.05/(5661)
+
+weight_manhplot <- ggplot(gwas_data, aes(x = bp_cum, y = -log10(pvalue), 
+                                  color = as_factor(chr), size = -log10(pvalue))) +
+  geom_hline(yintercept = -log10(sig), color = "grey40", linetype = "dashed") + 
+  geom_hline(yintercept = -log10(0.0001), color = "red", linetype = "dashed") + 
+  geom_point(alpha = 0.75, shape = ifelse((gwas_data$zscore >= 4.863456), 17, ifelse(gwas_data$zscore <= -4.863456, 25, 19)), fill = "dodgerblue4") +
+#  geom_label_repel(aes(label=ifelse((pvalue <=  sig & gene_name %in% human_height_genes$rat_gene), gene_name, "")), size = 6) + 
+  ylim(c(0,10)) + 
+  scale_x_continuous(label = axis_set$chr, breaks = axis_set$center) +
+  scale_color_manual(values = rep(c("dodgerblue4", "midnightblue"), unique(length(axis_set$chr)))) +
+  scale_size_continuous(range = c(0.5,3)) +
+  labs(x = NULL, 
+       y = expression(-log[10](italic(p)))) + 
+  theme_minimal() +
+  theme( 
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.text.x = element_text(angle = 90, size = 12), 
+    axis.text.y = element_text( size = 12,  vjust = 0), 
+    axis.title = element_text(size = 20))
+
+weight_manhplot
+
+```

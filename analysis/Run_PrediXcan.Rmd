@@ -1,0 +1,145 @@
+---
+title: "Run_PrediXcan"
+author: "sabrina-mi"
+date: "2023-04-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+## Genotype Harmonization
+
+We convert our genotype data to PrediXcan text [dosage format](https://github.com/hakyimlab/MetaXcan/wiki/Individual-level-PrediXcan:-introduction,-tutorials-and-manual#text-dosage-format)
+
+Make sure the genotype file is named in the form chr*, otherwise the PrediXcan software will not read in
+```{bash, eval=FALSE}
+BOX=/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023
+cd $BOX/RatData/genotypes
+# add variant_id column
+awk -vOFS="\t" '{$2=$1"_"$2"_"$3"_"$4 "\t" $2}1' processed_genotype.txt > tmp
+# add MAF column with 0 as placeholder
+awk -vOFS="\t" '{$5=$5 "\t" "0"}1' tmp > chr1_20.txt
+
+# create samples file
+head -n 1 new_geno.txt | tr -s '\t'  '\n' > samples.txt
+```
+
+We need to reformat the prediction model slightly before running PrediXcan.
+```{r,eval=FALSE}
+library(RSQLite)
+library(tidyverse)
+conn <- dbConnect(RSQLite::SQLite(), "/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023/RatXcan/Br_elasticNet.db")
+weights <- dbGetQuery(conn, 'select * from weights')
+weights <- weights %>% mutate(varID = rsid) %>% select(gene, rsid, varID, ref_allele, eff_allele, weight)
+
+extra <- dbGetQuery(conn, 'select * from extra')
+extra <- extra %>% rename(n.snps.in.model = n.snps, pred.perf.pval = pval, pred.perf.R2 = R2) %>% mutate(pred.perf.qval = NA)
+extra <- extra[, c(1,2,4,3,5,6)]
+dbWriteTable(conn, 'weights', weights, overwrite=TRUE)
+dbWriteTable(conn, 'extra', extra, overwrite=TRUE)
+dbDisconnect(conn)
+
+```
+
+
+
+## Predict Expression
+
+```{bash, eval=FALSE}
+BOX=/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023
+METAXCAN=/Users/sabrinami/Github/MetaXcan/software
+GENO=$BOX/RatData/genotypes
+RESULTS=$BOX/RatXcan/Results
+
+conda activate imlabtools
+
+python3 $METAXCAN/Predict.py \
+--model_db_path $BOX/RatXcan/Br_elasticNet.db \
+--text_genotypes $GENO/chr1_20.txt.gz \
+--text_sample_ids $GENO/samples.txt \
+--prediction_output $RESULTS/Br_EN__predict.txt \
+--prediction_summary_output $BOX/RatXcan/Results/Br_EN__summary.txt \
+--verbosity 1 \
+--throw
+
+```
+
+
+```{r preview prediction summ}
+predict_summ <- read.table("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/Br_EN__summary.txt", header=TRUE)
+head(predict_summ)
+```
+
+## Phenotype File into TSV
+
+```{bash, eval=FALSE}
+sed 's/\,/\t/g' $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.csv > $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.tsv
+
+```
+
+remove quotes, extra column, and writes to .txt file. And ensures predicted expression file and phenotype are matched by rfid.
+
+```{r, eval=FALSE}
+pheno = read.csv("/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.csv")
+pheno = subset(pheno, select=-X)
+pheno = filter(pheno, !is.na(bmi_wo_tail))
+
+predict = read.table("/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023/RatXcan/Results/Br_EN__predict.txt", header=TRUE)
+
+predict = filter(predict, FID %in% pheno$rfid)
+predict = predict[match(pheno$rfid, predict$FID), ]
+
+write.table(predict, "/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023/RatXcan/Results/pheno_subset__predict.txt", quote=FALSE, sep='\t')
+write.table(pheno, "/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/rat-genomic-analysis/PTRS-2023/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt", sep="\t", col.names=TRUE, row.names = FALSE, quote=FALSE)
+
+```
+
+## PrediXcan Association
+
+
+```{bash, eval=FALSE}
+RESULTS=$BOX/RatXcan/Results
+python3 $METAXCAN/PrediXcanAssociation.py \
+--expression_file $RESULTS/pheno_subset__predict.txt \
+--input_phenos_file $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt \
+--input_phenos_column bmi_wo_tail \
+--output $RESULTS/associations/Br__association_bmi_wo_tail.txt \
+--verbosity 9 --throw
+
+
+RESULTS=$BOX/RatXcan/Results
+python3 $METAXCAN/PrediXcanAssociation.py \
+--expression_file $RESULTS/pheno_subset__predict.txt \
+--input_phenos_file $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt \
+--input_phenos_column bmi_w_tail \
+--output $RESULTS/associations/Br__association_bmi_w_tail.txt \
+--verbosity 9 --throw
+
+RESULTS=$BOX/RatXcan/Results
+python3 $METAXCAN/PrediXcanAssociation.py \
+--expression_file $RESULTS/pheno_subset__predict.txt \
+--input_phenos_file $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt \
+--input_phenos_column length_wo_tail_cm \
+--output $RESULTS/associations/Br__association_length_wo_tail_cm.txt \
+--verbosity 9 --throw
+
+RESULTS=$BOX/RatXcan/Results
+python3 $METAXCAN/PrediXcanAssociation.py \
+--expression_file $RESULTS/pheno_subset__predict.txt \
+--input_phenos_file $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt \
+--input_phenos_column length_w_tail_cm \
+--output $RESULTS/associations/Br__association_length_w_tail_cm.txt \
+--verbosity 9 --throw
+
+RESULTS=$BOX/RatXcan/Results
+python3 $METAXCAN/PrediXcanAssociation.py \
+--expression_file $RESULTS/pheno_subset__predict.txt \
+--input_phenos_file $BOX/RatData/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.txt \
+--input_phenos_column body_weight_g \
+--output $RESULTS/associations/Br__association_body_weight_g.txt \
+--verbosity 9 --throw
+
+
+```
+
+

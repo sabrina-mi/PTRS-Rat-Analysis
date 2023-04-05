@@ -1,0 +1,180 @@
+---
+title: "Br EN model Validation"
+author: "sabrina-mi"
+date: "2023-04-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup}
+library(readr)
+library(tidyverse)
+"%&%" = function(a,b) paste(a,b,sep="")
+dir="/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/"
+```
+
+
+```{r read all association results}
+library(stringr)
+filelist <- list.files(dir %&% "Results/associations", pattern = "Br__association_", full.names = TRUE)
+full_df <- data.frame()
+for(file in filelist) {
+  assoc_file <- suppressMessages(read_tsv(file, col_names = TRUE))
+  # extract phenotype from regex matching in file name
+  pheno_id <- str_match(file, "association_(.*?).txt")[,2]
+  tempo <- cbind(assoc_file, metabolic_trait=pheno_id) %>% select(-c(status))
+  full_df <- rbind(full_df, tempo)
+} 
+
+saveRDS(full_df, dir %&% "assoc_full_df.RDS")
+```
+
+## Significant genes
+
+number of significant associations for each gene
+```{r}
+tempo_df <- full_df %>% filter(pvalue < .05/5601)
+
+
+#428 sig genes
+tempo_df %>% group_by(gene) %>% summarise(n = n())
+
+```
+
+number significant genes for each phenotype
+
+```{r}
+tempo_df %>% group_by(metabolic_trait) %>% summarise(n = n())
+```
+
+
+
+
+
+## distribution of prediction performances
+
+```{r query def}
+suppressMessages(library(tidyverse))
+suppressMessages(library(glue))
+PRE = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023"
+
+
+library("RSQLite")
+sqlite <- dbDriver("SQLite")
+dbname <- glue("{PRE}/RatXcan/Br_elasticNet.db") ## add full path if db file not in current directory
+## connect to db
+db = dbConnect(sqlite,dbname)
+## list tables
+dbListTables(db)
+
+## convenience query function
+query <- function(...) dbGetQuery(db, ...)
+## example queries
+query('select count(*) from weights')
+```
+
+14,224 snp-gene pairs.
+
+```{r}
+weights = dbGetQuery(db,"select * from weights")
+glimpse(weights)
+```
+
+```{r}
+extra = dbGetQuery(db,"select * from extra")
+glimpse(extra)
+
+```
+
+```{r}
+construction = dbGetQuery(db,"select * from construction ")
+sample_info = dbGetQuery(db,"select * from sample_info")
+nsam = sample_info$n.samples
+
+weights %>% count(gene) %>% arrange(desc(n)) %>% head(20)
+
+```
+
+```{r}
+weights %>% count(gene) %>% arrange(desc(n)) %>% .[["n"]] %>% summary()
+
+```
+
+
+## performance of predictors
+
+```{r}
+devtools::source_gist("38431b74c6c0bf90c12f")
+qqunif(extra$pred.perf.pval)
+
+```
+
+
+
+
+
+```{r}
+devtools::source_gist("a925fea01b365a8c605e")
+qqR2(extra$pred.perf.R2,nsam,main="R2 vs expected")
+```
+
+
+## well-predicted genes
+Using qvalue < .05
+```{r}
+library(qvalue)
+qq = qvalue(extra$pred.perf.pval)
+#hist(qq$qvalues)
+```
+
+
+```{r}
+extra$pred.perf.qval = qq$qvalues
+high_qual_genes = filter(extra, extra$pred.perf.qval < .05)
+hist(high_qual_genes$pred.perf.R2, main="Histogram of R2 for qval < genes")
+```
+
+## Comparing well-predicted genes
+
+R2 generated from initial analysis
+```{r}
+library(readxl)
+R2 = suppressWarnings(read_excel("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/santhanam-et-al-2022_supplementary-tables-ssr.xlsx", sheet = "ST15 R2 betweeen Tissues", skip=1))
+
+hist(R2$`R2 in NAcc`, main="Histogram of R2 NAcc")
+
+full_R2 = inner_join(extra, R2, by=c("gene"="Rat Ensembl ID"))
+full_R2 = select(full_R2, c("gene", "pred.perf.R2", "R2 in NAcc", "R2 in IL", "R2 in LHb", "R2 in PL", "R2 in OFC"))
+```
+
+
+# Predict.py Performance 
+
+(The results here are a good sign for the model, but statistically meaningless, because the testing set is the same as the training set)
+```{r, eval=FALSE}
+pred_expr = read.table("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/Br_EN__predict.txt", header=TRUE)
+obs_expr = read.csv("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatData/phenotypes/gexBr.csv",header = TRUE)
+
+gene_list = colnames(pred_expr)[-c(1,2)]
+df = data.frame(gene = gene_list, cor= vector("numeric", 5601))
+for(i in 3:5603){
+  gene=colnames(pred_expr)[i]
+  pred = pred_expr[,c(1,i)]
+  obs = obs_expr[,c("X",gene)]
+  temp = inner_join(pred,obs, by=c("FID" = "X"))
+  colnames(temp) = c("FID", "Predicted", "Observed")
+  r = cor(temp$Predicted,temp$Observed)
+  df[i-2,2]=r
+}
+
+hist(df$cor)
+```
+
+
+```{r, eval=FALSE}
+devtools::source_gist("a925fea01b365a8c605e")
+qqR(df$cor,nsam,main="correlation vs expected")
+
+```

@@ -1,0 +1,204 @@
+---
+title: "Predict Rat Traits with PTRS"
+author: "sabrina-mi"
+date: "2023-04-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(RSQLite)
+library(glmnet)
+library(data.table)
+"%&%" = function(a,b) paste(a,b,sep="")
+devtools::source_gist("ee5f67abddd0b761ee24410ea71c41aa")
+devtools::source_gist("38431b74c6c0bf90c12f")
+devtools::source_gist("1e9053c8f35c30396429350a08f33ea7")
+
+
+```
+
+
+# Predict Traits with Yanyu's PTRS models
+```{r}
+traits <- c("height", "bmi")
+dir="/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/"
+
+# folder with PrediXcan results
+results.dir <- dir %&% "RatXcan/Results/"
+# folder with PTRS weights, predicted traits will output here
+data.dir <- dir %&%"RatData/"
+
+```
+
+## Data Wrangling
+
+```{r, eval=FALSE}
+orth.rats <- suppressMessages(read_tsv(dir %&% "RatXcan/ortholog_genes_rats_humans.tsv"))
+
+pred_expr <- suppressMessages(read_tsv(results.dir %&% "Br_EN__predict.txt"))
+
+pred_expr$IID = pred_expr$FID
+
+#filter only for genes that have a human ortholog
+pred_expr <- pred_expr %>% select(c(IID, intersect(colnames(pred_expr), orth.rats$rnorvegicus_homolog_ensembl_gene) ))
+
+
+## workaround, since pred_expr
+
+#change name to human ensembl id in humans
+colnames(pred_expr)[2:ncol(pred_expr)] <- orth.rats[match(colnames(pred_expr)[2:ncol(pred_expr)], orth.rats$rnorvegicus_homolog_ensembl_gene), 1] %>% .[["ensembl_gene_id"]]
+
+
+```
+
+
+```{r, eval=FALSE}
+fn_weights = function(trait)
+{
+  weights <- read_tsv(dir %&% "PTRS-models/elastic_net_alpha_0.1_British.export_model/weights." %&% trait %&% ".tsv.gz")
+  weights$gene_id <- sapply(strsplit(weights$gene_id, "\\."), `[`, 1)
+  rownames(weights) <- weights$gene_id
+  weights <- weights %>% rename(gene_name = gene_id)
+  return(weights)
+}
+```
+
+
+
+```{r run ptrs, eval=FALSE}
+for(trait in traits) {
+  weights <- fn_weights(trait)
+  pred_trait <- fn_generate_trait(pred_expr, weights)
+  saveRDS(pred_trait, results.dir %&% "rat_pred_" %&% trait %&% "_w_Human_best_PTRS.RDS")
+  return(pred_trait)
+}
+
+```
+
+
+## Compare with Human Results
+
+```{r, eval=FALSE}
+pgp_pred_expr <- read_tsv(dir %&% "SPrediXcan/PGP/PGP_Whole_Blood__predict.txt") %>% select(-c(FID))
+
+```
+
+```{r, eval=FALSE}
+fn_pgp_trait = function(trait)
+{
+  weights <- read_tsv(dir %&% "PTRS-models/elastic_net_alpha_0.1_British.export_model/weights." %&% trait %&% ".tsv.gz") %>% rename(gene_name = gene_id)
+  # load phenotype data
+  db <- "/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/web-data/2021-04-21-personal-genomes-project-data/repgp-data.sqlite3"
+  sqlite.driver <- dbDriver("SQLite")
+  conn <- dbConnect(RSQLite::SQLite(), db)
+  dbListTables(conn)
+  users <- dbGetQuery(conn, 'select * from users')
+  dbDisconnect(conn)
+  pheno <- users  %>% select(c(sample, trait)) %>% na.omit()
+  n_genes = as.matrix(apply(weights[,2:ncol(weights)], 2, function(x) sum(x != 0 )))
+  pgp_pred_trait <- fn_generate_trait(pgp_pred_expr, weights)
+  pheno <- pheno[na.omit(match(rownames(pgp_pred_trait), pheno$sample)),]
+  return(list("pheno"= pheno, "pred_trait" = pgp_pred_trait, "n_genes" = n_genes))
+}
+
+
+```
+
+## compute correlations
+
+```{r}
+fn_corr = function(pheno, pred_trait, n_genes, RDS){
+  trait_df <- data.frame(estimate = numeric(), pvalue = numeric(), model = character(), n_genes_in_model = numeric(), conf.int.min = numeric(), conf.int.max = numeric())
+  tempo <- pred_trait[na.omit(match(pheno[,1], rownames(pred_trait))), ]
+  for(i in 1:ncol(tempo)){
+    cor = cor.test(pheno[,2], tempo[,i])
+    trait_df[i,1] <- cor$estimate
+    trait_df[i,2] <- cor$p.value
+    trait_df[i,3] <- paste("model", i, sep = "_")
+    trait_df[i,4] <- n_genes[i,1]
+    trait_df[i,5] <- cor$conf.int[1]
+    trait_df[i,6] <- cor$conf.int[2]
+    saveRDS(trait_df, RDS)
+  }
+  return(trait_df)
+} 
+
+
+```
+
+
+```{r,eval=FALSE}
+for (trait in traits){
+  dfs <- fn_pgp_trait(trait)
+  pheno <- dfs$pheno
+  pred_trait <- dfs$pgp_pred_trait
+  n_genes <- dfs$n_genes
+  RDS <- data.dir %&% "corr_" %&% trait %&% "_indiv_PTRS.RDS"
+  trait_df <- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
+}
+
+
+```
+
+
+```{r, eval=FALSE}
+for (trait in traits){
+  dfs <- fn_pgp_trait(trait)
+  pheno <- dfs$pheno
+  pgp_pred_trait <- dfs$pred_trait
+  n_genes <- dfs$n_genes
+  RDS <- data.dir %&% "corr_" %&% trait %&% "_indiv_PTRS.RDS"
+  trait_df <- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
+}
+
+
+```
+
+
+```{r}
+fn_corr_plot = function(file,title){
+  trait_df <- readRDS(file)
+  p1 = ggplot(trait_df, aes(n_genes_in_model, estimate)) + geom_errorbar(aes(ymin = conf.int.min, ymax = conf.int.max ), width=0.2,  color="gray") + geom_point(color = "purple", position="jitter") + geom_line(color = "purple")   + xlab("Number of genes in each model") + ylab("Correlation Coefficient (r)") + ggtitle(title) + theme_bw()
+  return(p1)
+}
+```
+
+
+## Plot PTRS Correlations for Rats
+
+```{r}
+pheno_file <- read.csv(data.dir %&% "phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.csv")
+
+```
+
+
+```{r}
+traits <- c("height")
+rat_analogue <- c("length_w_tail_cm")
+names(rat_analogue) <- traits
+
+```
+
+```{r plot}
+for (trait in traits) {
+  # data wrangling
+  pheno <- pheno_file %>% dplyr::select(c(rfid, rat_analogue[[trait]])) %>% na.omit()
+  weights <- read_tsv(dir %&% "PTRS-models/elastic_net_alpha_0.1_British.export_model/weights." %&% trait %&% ".tsv.gz") %>% rename(gene_name = gene_id)
+  n_genes = as.matrix(apply(weights[,2:ncol(weights)], 2, function(x) sum(x != 0 )))
+  # corr inputs
+  n_genes <- n_genes[-1, , drop = FALSE]
+  pred_trait <- readRDS(results.dir %&% "rat_pred_" %&% trait %&% "_w_Human_best_PTRS.RDS")[,-1]
+  pheno <- pheno[na.omit(match(rownames(pred_trait), pheno$rfid)),]
+  RDS <- results.dir %&% "corr_" %&% rat_analogue[[trait]] %&% "_rat_PTRS.RDS"
+  # output dataframe for plot
+  trait_df <- fn_corr(pheno, pred_trait, n_genes, RDS)
+  # plot
+}
+
+fn_corr_plot(results.dir %&% "corr_length_w_tail_cm_rat_PTRS.RDS", "Performance of PTRS for Rat Bodylength")
+```

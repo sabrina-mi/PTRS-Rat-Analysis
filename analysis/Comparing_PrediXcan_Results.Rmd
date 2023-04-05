@@ -1,0 +1,114 @@
+---
+title: "Comparing to Natasha's PrediXcan Results"
+author: "sabrina-mi"
+date: "2023-04-04"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+## BMI without Tail
+```{r bmi read results}
+bmi_w_tail_assoc = read.table("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/associations/Br__association_bmi_w_tail.txt", header=TRUE)
+hist(bmi_w_tail_assoc$zscore)
+```
+
+```{r bmi qq values}
+library(tidyverse)
+library(qvalue)
+qq = qvalue(bmi_w_tail_assoc$pvalue)
+bmi_w_tail_assoc$qvalue = qq$qvalues
+
+high_pred_genes = bmi_w_tail_assoc %>% filter(qvalue < 0.05)
+```
+
+Read Natasha's result to dataframe
+```{r read excel}
+
+library(readxl)
+Ac_assoc = read_excel("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/santhanam-et-al-2022_supplementary-tables-ssr.xlsx", sheet = "ST1 TWAS NAcc", skip=1)
+
+Ac_assoc_bmi_w_tail = Ac_assoc %>% filter(`Metabolic Trait` == "Body Mass Index (BMI) with tail")
+```
+
+
+
+```{r}
+qq_Ac = qvalue(Ac_assoc_bmi_w_tail$`P-value`)
+Ac_assoc_bmi_w_tail$qvalue= qq_Ac$qvalues
+
+high_pred_genes_Ac = Ac_assoc_bmi_w_tail %>% filter(qvalue < 0.05)
+nrow(high_pred_genes_Ac)
+```
+651 well-predicted genes
+
+```{r}
+Ac_Br_zscores = inner_join(bmi_w_tail_assoc, Ac_assoc_bmi_w_tail, by=c("gene" = "Rat Ensembl ID"))
+nrow(Ac_Br_zscores)
+Ac_Br_zscores %>% ggplot(aes(zscore, Zscore)) + geom_point() + ggtitle("BMI with Tail PrediXcan z-scores") + xlab("Br") + ylab("Ac") + geom_abline(intercept = 0, slope = 1)
+```
+
+
+## Length with Tail
+
+Br: 5601 genes, Ac: 5388
+```{r}
+length_w_tail_assoc = read.table("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/associations/Br__association_length_w_tail_cm.txt", header=TRUE)
+hist(length_w_tail_assoc$zscore)
+```
+
+```{r}
+qq = qvalue(length_w_tail_assoc$pvalue)
+length_w_tail_assoc$qvalue = qq$qvalues
+
+high_pred_genes = length_w_tail_assoc %>% filter(qvalue < 0.05)
+nrow(high_pred_genes)
+
+
+Ac_assoc_length_w_tail = Ac_assoc %>% filter(`Metabolic Trait` == "Body length including tail")
+```
+
+468 well-predicted genes
+
+```{r}
+qq_Ac = qvalue(Ac_assoc_length_w_tail$`P-value`)
+Ac_assoc_length_w_tail$qvalue= qq_Ac$qvalues
+
+high_pred_genes_Ac = Ac_assoc_length_w_tail %>% filter(qvalue < 0.05)
+nrow(high_pred_genes_Ac)
+
+
+```
+1276 well-predicted genes
+
+```{r}
+shared_genes = intersect(high_pred_genes$gene, high_pred_genes_Ac$`Rat Ensembl ID`)
+length(shared_genes)
+```
+91 shared genes with qvalue < 0.05
+
+```{r}
+Br_only = setdiff(high_pred_genes$gene, high_pred_genes_Ac$`Rat Ensembl ID`)
+length(Br_only)
+
+```
+377 genes are high-quality only in Br associations.
+
+```{r}
+Ac_only = setdiff(high_pred_genes_Ac$`Rat Ensembl ID`, high_pred_genes$gene)
+length(Ac_only)
+
+```
+1185 genes are high-quality only in Ac.
+
+
+```{r compare zscores}
+Ac_Br = inner_join(length_w_tail_assoc, Ac_assoc_length_w_tail, by=c("gene" = "Rat Ensembl ID"))
+nrow(Ac_Br)
+Ac_Br %>% ggplot(aes(zscore, Zscore)) + geom_point() + ggtitle("Length with Tail PrediXcan z-scores") + xlab("Br") + ylab("Ac") + geom_abline(intercept = 0, slope = 1)
+```
+```{r,eval=FALSE}
+
+Ac_Br %>% ggplot(aes(effect, `Effect Size`)) + geom_point() + ggtitle("Length with Tail PrediXcan Effect Sizes") + xlab("Br") + ylab("Ac") + geom_abline(intercept = 0, slope = 1)
+```
