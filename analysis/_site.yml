@@ -1,7 +1,7 @@
-name: "PTRS-Rat-Analysis"
+name: PTRS-Rat-Analysis
 output_dir: ../docs
 navbar:
-  title: "PTRS-Rat-Analysis"
+  title: PTRS-Rat-Analysis
   left:
   - text: Home
     href: index.html
@@ -9,6 +9,10 @@ navbar:
     href: about.html
   - text: License
     href: license.html
+  right:
+  - icon: fab fa-github
+    text: Source code
+    href: https://github.com/sabrina-mi/PTRS-Rat-Analysis
 output:
   workflowr::wflow_html:
     toc: yes
