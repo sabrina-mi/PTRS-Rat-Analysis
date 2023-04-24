@@ -28,13 +28,13 @@ for(file in filelist) {
   full_df <- rbind(full_df, tempo)
 } 
 
-saveRDS(full_df, dir %&% "assoc_full_df.RDS")
+#saveRDS(full_df, dir %&% "assoc_full_df.RDS")
 ```
 
 ## Significant genes
 
 number of significant associations for each gene
-```{r}
+```{r filter for significance}
 tempo_df <- full_df %>% filter(pvalue < .05/5601)
 
 
@@ -45,7 +45,7 @@ tempo_df %>% group_by(gene) %>% summarise(n = n())
 
 number significant genes for each phenotype
 
-```{r}
+```{r n significant for pheno}
 tempo_df %>% group_by(metabolic_trait) %>% summarise(n = n())
 ```
 
@@ -63,7 +63,7 @@ PRE = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2
 
 library("RSQLite")
 sqlite <- dbDriver("SQLite")
-dbname <- glue("{PRE}/RatXcan/Br_elasticNet.db") ## add full path if db file not in current directory
+dbname <- glue("{PRE}/PrediXcan-models/Br_en_output.db") ## add full path if db file not in current directory
 ## connect to db
 db = dbConnect(sqlite,dbname)
 ## list tables
@@ -75,7 +75,7 @@ query <- function(...) dbGetQuery(db, ...)
 query('select count(*) from weights')
 ```
 
-14,224 snp-gene pairs.
+14,306 snp-gene pairs.
 
 ```{r}
 weights = dbGetQuery(db,"select * from weights")
@@ -88,10 +88,11 @@ glimpse(extra)
 
 ```
 
+** sample size is wrong.** See [https://uchicago.box.com/s/ma94zm0izf8rf514wdwk2uydmtt25r4y](https://uchicago.box.com/s/ma94zm0izf8rf514wdwk2uydmtt25r4y) for how the error happened. The rest of the model was generated correctly. We confirmed that sample size of rats used for glmnet input is 227.
 ```{r}
 construction = dbGetQuery(db,"select * from construction ")
-sample_info = dbGetQuery(db,"select * from sample_info")
-nsam = sample_info$n.samples
+#sample_info = dbGetQuery(db,"select * from sample_info")
+nsam = 227
 
 weights %>% count(gene) %>% arrange(desc(n)) %>% head(20)
 
@@ -107,39 +108,52 @@ weights %>% count(gene) %>% arrange(desc(n)) %>% .[["n"]] %>% summary()
 
 ```{r}
 devtools::source_gist("38431b74c6c0bf90c12f")
-qqunif(extra$pred.perf.pval)
+qqunif(extra$pval)
 
 ```
 
-
-
+Distribution of Correlation Coefficients:
+```{r hist corr}
+hist(extra$cor); abline(v=0)
+```
 
 
 ```{r}
 devtools::source_gist("a925fea01b365a8c605e")
-qqR2(extra$pred.perf.R2,nsam,main="R2 vs expected")
+qqR2(extra$cor,nsam,main="R2 vs expected")
 ```
 
+percent with positive prediction correlation
+```{r}
+mean(extra$cor > 0)
+
+```
 
 ## well-predicted genes
 Using qvalue < .05
-```{r}
+```{r qval}
 library(qvalue)
-qq = qvalue(extra$pred.perf.pval)
+qq = qvalue(extra$pval)
 #hist(qq$qvalues)
 ```
 
 
 ```{r}
+devtools::source_gist("a925fea01b365a8c605e")
+qqR(extra$cor,nsam,main="correlation vs expected")
+
+```
+
+```{r}
 extra$pred.perf.qval = qq$qvalues
 high_qual_genes = filter(extra, extra$pred.perf.qval < .05)
-hist(high_qual_genes$pred.perf.R2, main="Histogram of R2 for qval < genes")
+hist(high_qual_genes$R2, main="Histogram of R2 for qval < genes")
 ```
 
 ## Comparing well-predicted genes
 
 R2 generated from initial analysis
-```{r}
+```{r, eval=FALSE}
 library(readxl)
 R2 = suppressWarnings(read_excel("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/santhanam-et-al-2022_supplementary-tables-ssr.xlsx", sheet = "ST15 R2 betweeen Tissues", skip=1))
 
@@ -151,6 +165,17 @@ full_R2 = select(full_R2, c("gene", "pred.perf.R2", "R2 in NAcc", "R2 in IL", "R
 
 
 # Predict.py Performance 
+
+
+```{r, eval=FALSE}
+devtools::source_gist("a925fea01b365a8c605e")
+qqR(df$cor,nsam,main="correlation vs expected")
+
+```
+
+
+
+
 
 (The results here are a good sign for the model, but statistically meaningless, because the testing set is the same as the training set)
 ```{r, eval=FALSE}
@@ -173,8 +198,4 @@ hist(df$cor)
 ```
 
 
-```{r, eval=FALSE}
-devtools::source_gist("a925fea01b365a8c605e")
-qqR(df$cor,nsam,main="correlation vs expected")
 
-```

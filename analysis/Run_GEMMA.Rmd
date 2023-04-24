@@ -1,0 +1,117 @@
+---
+title: "Running GEMMA BSLMM"
+author: "Sabrina Mi"
+date: "2023-04-11"
+output: html_document
+---
+
+```{r definitions}
+library(tidyverse)
+"%&%" = function(a,b) paste(a,b,sep="")
+
+
+box.dir = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/"
+# Path to directory with genotype, gene expression, and phyMap files
+data.dir <- box.dir %&% "RatData/"
+# Create new directory for GEMMA inputs and outputs
+base.dir <- box.dir %&% "GEMMA/"
+
+tis="Br"
+
+
+```
+
+
+The genotype file is too large to be read into memory, so we subset it using bash commands.
+
+1. get list of rat ids from gene expression table (n_samples=339)
+2. subset genotype file using awk script:
+```{bash}
+cd /Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023
+
+awk -F"," 'NR!=1 {print $1}' RatData/phenotypes/gexBr.csv > GEMMA/gex_samples.txt
+```
+
+
+```{bash}
+awk -f GEMMA/subset_geno.awk GEMMA/gex_samples.txt RatData/genotypes/processed_genotype.txt > GEMMA/Br_bimbam
+
+```
+
+
+## Generate GRMs
+
+```{bash}
+cd /home/s1mi/Github/PTRS-Rat-Analysis/GEMMA
+for file in genotype_files/tmp.Br.geno*; do
+  gene=$(echo $file | awk '{ sub(/.*geno/, ""); print }')
+  echo $gene
+  gemma -g $file -p phenotype_files/tmp.pheno.$gene -gk -o grm_Br_$gene
+done
+
+
+
+
+```
+
+
+
+
+
+## Do this on TSCC
+```{r, eval=FALSE}
+box.dir = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/"
+# Path to directory with genotype, gene expression, and phyMap files
+data.dir <- box.dir %&% "RatData/"
+# Create new directory for GEMMA inputs and outputs
+base.dir <- box.dir %&% "GEMMA/"
+
+
+fn_run_gemma_grm = function(tis){
+  #Read in bimbam file
+  bimfile <- base.dir %&% tis %&% "_bimbam" ###get SNP position information###
+
+  pheno.dir <- "/Users/sabrinami/Github/PTRS-Rat-Analysis/GEMMA/phenotype_files/"
+  ge.dir <- "/Users/sabrinami/Github/PTRS-Rat-Analysis/GEMMA/genotype_files/"
+  grm.dir <- "/Users/sabrinami/Github/PTRS-Rat-Analysis/GEMMA/output/"
+
+  bim <- read.table(bimfile, header=TRUE)
+  gex <- read.csv(data.dir %&% "phenotypes/gexBr.csv", header=TRUE)
+  gtf <- readRDS(data.dir %&% "gene_annotation.RDS")
+    
+    
+  ensidlist <- colnames(gex)[-1]
+  setwd(base.dir)
+  for(i in 1:length(ensidlist)){
+    cat(i,"/",length(ensidlist),"\n")
+    gene <- ensidlist[i]
+    geneinfo <- gtf[match(gene, rownames(gtf)),]
+    c <- geneinfo$chr
+    start <- geneinfo$start - 1e6 ### 1Mb lower bound for cis-eQTLS
+    end <- geneinfo$end + 1e6 ### 1Mb upper bound for cis-eQTLs
+    chrsnps <- subset(bim, bim[,1]==c) ### pull snps on same chr
+    lower_bound <- subset(chrsnps, chrsnps[,2]>=start)
+    cissnps <- subset(lower_bound, chrsnps[,2]<=end) ### pull cis-SNP info
+    if (nrow(cissnps)){
+      snpids <- paste(cissnps$CHR,cissnps$POS,cissnps$A1,cissnps$A2, sep="_")
+      snplist <- cissnps[,3:ncol(cissnps)]
+      snplist <- cbind(snpids,snplist)
+      write.table(snplist, file= ge.dir %&% "tmp." %&% tis %&% ".geno" %&% gene, quote=F,col.names=F,row.names=F)
+      geneexp <- cbind(as.numeric(gex[,i+1]))
+      write.table(geneexp, file= pheno.dir %&% "tmp.pheno." %&% gene, col.names=F, row.names = F, quote=F) #output pheno for gemma
+    }
+    
+  }
+}
+
+for (i in 1:ensidlist){
+  cat(i,"/",length(ensidlist),"\n")
+  runGEMMAgrm <- "gemma -g " %&%  ge.dir %&% "tmp." %&% tis %&% ".geno" %&% gene %&% " -p " %&% pheno.dir %&% "tmp.pheno." %&%  gene  %&%  " -gk -o grm_" %&% tis %&% "_" %&% gene
+  system(runGEMMAgrm)
+
+}
+
+
+
+```
+

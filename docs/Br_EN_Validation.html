@@ -369,7 +369,7 @@ div.tocify {
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-ok text-success"
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -380,8 +380,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
-</a>
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -390,13 +390,13 @@ class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2023-04-04
+<strong>Last updated:</strong> 2023-04-05
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 0
+aria-hidden="true"></span> 1
 </p>
 <p>
 <strong>Knit directory:</strong> <code>PTRS-Rat-Analysis/</code> <span
@@ -419,18 +419,21 @@ versions</em> tab lists the development history.
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguptodate">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>R Markdown file:</strong> up-to-date
-</a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRMarkdownfilestronguncommittedchanges">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>R Markdown file:</strong> uncommitted
+changes </a>
 </p>
 </div>
-<div id="strongRMarkdownfilestronguptodate"
+<div id="strongRMarkdownfilestronguncommittedchanges"
 class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great! Since the R Markdown file has been committed to the Git
-repository, you know the exact version of the code that produced these
-results.</p>
+<p>The R Markdown file has unstaged changes. To know which version of
+the R Markdown file created these results, you’ll want to first commit
+it to the Git repo. If you’re still working on the analysis, you can
+ignore this warning. When you’re finished, you can run
+<code>wflow_publish</code> to commit the R Markdown file and build the
+HTML.</p>
 </div>
 </div>
 </div>
@@ -521,15 +524,15 @@ project makes it easier to run your code on other machines.</p>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree7dd0181ef955b659eb123f567613a6dc1c1ff8c1targetblank7dd0181a">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree5db94f805593bca294b6e39fb4688cfc95dbd017targetblank5db94f8a">
 <span class="glyphicon glyphicon-ok text-success"
 aria-hidden="true"></span> <strong>Repository version:</strong>
-<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/7dd0181ef955b659eb123f567613a6dc1c1ff8c1" target="_blank">7dd0181</a>
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/5db94f805593bca294b6e39fb4688cfc95dbd017" target="_blank">5db94f8</a>
 </a>
 </p>
 </div>
 <div
-id="strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree7dd0181ef955b659eb123f567613a6dc1c1ff8c1targetblank7dd0181a"
+id="strongRepositoryversionstrongahrefhttpsgithubcomsabrinamiPTRSRatAnalysistree5db94f805593bca294b6e39fb4688cfc95dbd017targetblank5db94f8a"
 class="panel-collapse collapse">
 <div class="panel-body">
 <p>
@@ -539,7 +542,7 @@ reproducibility.
 </p>
 <p>
 The results in this page were generated with repository version
-<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/7dd0181ef955b659eb123f567613a6dc1c1ff8c1" target="_blank">7dd0181</a>.
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/tree/5db94f805593bca294b6e39fb4688cfc95dbd017" target="_blank">5db94f8</a>.
 See the <em>Past versions</em> tab to see a history of the changes made
 to the R Markdown and HTML files.
 </p>
@@ -555,6 +558,12 @@ were generated:
 <pre><code>
 Ignored files:
     Ignored:    .DS_Store
+    Ignored:    .Rhistory
+    Ignored:    .Rproj.user/
+    Ignored:    analysis/.DS_Store
+
+Unstaged changes:
+    Modified:   analysis/Br_EN_Validation.Rmd
 
 </code></pre>
 <p>
@@ -600,6 +609,23 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/sabrina-mi/PTRS-Rat-Analysis/5db94f805593bca294b6e39fb4688cfc95dbd017/docs/Br_EN_Validation.html" target="_blank">5db94f8</a>
+</td>
+<td>
+sabrina-mi
+</td>
+<td>
+2023-04-04
+</td>
+<td>
+Build site.
+</td>
+</tr>
 <tr>
 <td>
 Rmd
@@ -648,7 +674,7 @@ for(file in filelist) {
   full_df &lt;- rbind(full_df, tempo)
 } 
 
-saveRDS(full_df, dir %&amp;% &quot;assoc_full_df.RDS&quot;)</code></pre>
+#saveRDS(full_df, dir %&amp;% &quot;assoc_full_df.RDS&quot;)</code></pre>
 <div id="significant-genes" class="section level2">
 <h2>Significant genes</h2>
 <p>number of significant associations for each gene</p>
@@ -689,7 +715,7 @@ PRE = &quot;/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/P
 
 library(&quot;RSQLite&quot;)
 sqlite &lt;- dbDriver(&quot;SQLite&quot;)
-dbname &lt;- glue(&quot;{PRE}/RatXcan/Br_elasticNet.db&quot;) ## add full path if db file not in current directory
+dbname &lt;- glue(&quot;{PRE}/PrediXcan-models/Br_en_output.db&quot;) ## add full path if db file not in current directory
 ## connect to db
 db = dbConnect(sqlite,dbname)
 ## list tables
@@ -700,82 +726,137 @@ query &lt;- function(...) dbGetQuery(db, ...)
 ## example queries
 query(&#39;select count(*) from weights&#39;)</code></pre>
 <pre><code>  count(*)
-1    14224</code></pre>
-<p>14,224 snp-gene pairs.</p>
+1    14283</code></pre>
+<p>14,306 snp-gene pairs.</p>
 <pre class="r"><code>weights = dbGetQuery(db,&quot;select * from weights&quot;)
 glimpse(weights)</code></pre>
-<pre><code>Rows: 14,224
-Columns: 6
-$ gene       &lt;chr&gt; &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG0000005…
+<pre><code>Rows: 14,283
+Columns: 8
 $ rsid       &lt;chr&gt; &quot;1_1643610_C_T&quot;, &quot;1_2092364_C_T&quot;, &quot;1_1643610_C_T&quot;, &quot;1_20923…
-$ varID      &lt;chr&gt; &quot;1_1643610_C_T&quot;, &quot;1_2092364_C_T&quot;, &quot;1_1643610_C_T&quot;, &quot;1_20923…
+$ gene       &lt;chr&gt; &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG0000005…
+$ weight     &lt;dbl&gt; -0.212883300, 0.106431000, -0.134257200, 0.256792100, -0.27…
 $ ref_allele &lt;chr&gt; &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;,…
 $ eff_allele &lt;chr&gt; &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;, &quot;T&quot;,…
-$ weight     &lt;dbl&gt; -0.199572530, 0.098030720, -0.123155000, 0.238959200, -0.25…</code></pre>
+$ pval       &lt;dbl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+$ N          &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+$ cis        &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…</code></pre>
 <pre class="r"><code>extra = dbGetQuery(db,&quot;select * from extra&quot;)
 glimpse(extra)</code></pre>
-<pre><code>Rows: 5,601
+<pre><code>Rows: 5,632
 Columns: 6
-$ gene            &lt;chr&gt; &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG00000050129&quot;, &quot;ENSRNOG00…
-$ genename        &lt;chr&gt; &quot;Raet1e&quot;, &quot;AABR07000137.1&quot;, &quot;AABR07000145.1&quot;, &quot;AABR070…
-$ n.snps.in.model &lt;int&gt; 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, …
-$ pred.perf.R2    &lt;dbl&gt; 2.687766e-02, 4.222472e-02, 3.455208e-02, 1.769772e-03…
-$ pred.perf.pval  &lt;dbl&gt; 1.339141e-02, 1.857276e-03, 4.959378e-03, 5.282966e-01…
-$ pred.perf.qval  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…</code></pre>
+$ gene     &lt;chr&gt; &quot;ENSRNOG00000040300&quot;, &quot;ENSRNOG00000050129&quot;, &quot;ENSRNOG000000403…
+$ genename &lt;chr&gt; &quot;Raet1e&quot;, &quot;AABR07000137.1&quot;, &quot;AABR07000145.1&quot;, &quot;AABR07000147.1…
+$ R2       &lt;dbl&gt; 3.179392e-02, 3.834998e-02, 4.501314e-02, 1.673074e-04, 2.345…
+$ n.snps   &lt;int&gt; 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 1, 1…
+$ pval     &lt;dbl&gt; 7.075390e-03, 3.047032e-03, 1.301733e-03, 8.463218e-01, 8.184…
+$ cor      &lt;dbl&gt; 0.178308510, 0.195831502, 0.212162994, -0.012934735, -0.01531…</code></pre>
+<p>** sample size is wrong.** See <a
+href="https://uchicago.box.com/s/ma94zm0izf8rf514wdwk2uydmtt25r4y">https://uchicago.box.com/s/ma94zm0izf8rf514wdwk2uydmtt25r4y</a>
+for how the error happened. The rest of the model was generated
+correctly. We confirmed that sample size of rats used for glmnet input
+is 227.</p>
 <pre class="r"><code>construction = dbGetQuery(db,&quot;select * from construction &quot;)
-sample_info = dbGetQuery(db,&quot;select * from sample_info&quot;)
-nsam = sample_info$n.samples
+#sample_info = dbGetQuery(db,&quot;select * from sample_info&quot;)
+nsam = 227
 
 weights %&gt;% count(gene) %&gt;% arrange(desc(n)) %&gt;% head(20)</code></pre>
 <pre><code>                 gene  n
-1  ENSRNOG00000047706 22
-2  ENSRNOG00000000451 18
-3  ENSRNOG00000000436 16
-4  ENSRNOG00000026799 16
-5  ENSRNOG00000000478 15
-6  ENSRNOG00000000433 14
-7  ENSRNOG00000000841 14
-8  ENSRNOG00000022283 14
-9  ENSRNOG00000027157 14
-10 ENSRNOG00000061639 14
-11 ENSRNOG00000000432 13
-12 ENSRNOG00000054031 13
-13 ENSRNOG00000058784 13
-14 ENSRNOG00000059770 13
-15 ENSRNOG00000029500 12
-16 ENSRNOG00000039744 12
-17 ENSRNOG00000056637 12
-18 ENSRNOG00000062067 12
-19 ENSRNOG00000000423 11
-20 ENSRNOG00000000435 11</code></pre>
+1  ENSRNOG00000032708 27
+2  ENSRNOG00000000855 22
+3  ENSRNOG00000047706 22
+4  ENSRNOG00000000451 18
+5  ENSRNOG00000000850 17
+6  ENSRNOG00000000841 14
+7  ENSRNOG00000022283 14
+8  ENSRNOG00000027157 14
+9  ENSRNOG00000000804 13
+10 ENSRNOG00000000481 12
+11 ENSRNOG00000000840 12
+12 ENSRNOG00000029500 12
+13 ENSRNOG00000039744 12
+14 ENSRNOG00000056637 12
+15 ENSRNOG00000058288 12
+16 ENSRNOG00000059770 12
+17 ENSRNOG00000000423 11
+18 ENSRNOG00000000433 11
+19 ENSRNOG00000000437 11
+20 ENSRNOG00000000836 11</code></pre>
 <pre class="r"><code>weights %&gt;% count(gene) %&gt;% arrange(desc(n)) %&gt;% .[[&quot;n&quot;]] %&gt;% summary()</code></pre>
 <pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   1.00    2.00    2.00    2.54    3.00   22.00 </code></pre>
+  1.000   2.000   2.000   2.536   3.000  27.000 </code></pre>
 </div>
 <div id="performance-of-predictors" class="section level2">
 <h2>performance of predictors</h2>
 <pre class="r"><code>devtools::source_gist(&quot;38431b74c6c0bf90c12f&quot;)</code></pre>
 <pre><code>ℹ Sourcing gist &quot;38431b74c6c0bf90c12f&quot;
 ℹ SHA-1 hash of file is &quot;cbeca7fd9bf1602dee41c4f1880cc3a5e8992303&quot;</code></pre>
-<pre class="r"><code>qqunif(extra$pred.perf.pval)</code></pre>
-<pre><code>Warning in qqunif(extra$pred.perf.pval): thresholding p to 1e-30</code></pre>
-<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>qqunif(extra$pval)</code></pre>
+<pre><code>Warning in qqunif(extra$pval): thresholding p to 1e-30</code></pre>
+<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Distribution of Correlation Coefficients:</p>
+<pre class="r"><code>hist(extra$cor); abline(v=0)</code></pre>
+<p><img src="figure/Br_EN_Validation.Rmd/hist%20corr-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>devtools::source_gist(&quot;a925fea01b365a8c605e&quot;)</code></pre>
 <pre><code>ℹ Sourcing gist &quot;a925fea01b365a8c605e&quot;
 ℹ SHA-1 hash of file is &quot;01da6a099ce8e3272b3036fcf075b7afa5287dad&quot;</code></pre>
-<pre class="r"><code>qqR2(extra$pred.perf.R2,nsam,main=&quot;R2 vs expected&quot;)</code></pre>
-<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>qqR2(extra$cor,nsam,main=&quot;R2 vs expected&quot;)</code></pre>
+<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>percent with positive prediction correlation</p>
+<pre class="r"><code>mean(extra$cor &gt; 0)</code></pre>
+<pre><code>[1] 0.8883168</code></pre>
 </div>
 <div id="well-predicted-genes" class="section level2">
 <h2>well-predicted genes</h2>
 <p>Using qvalue &lt; .05</p>
 <pre class="r"><code>library(qvalue)
-qq = qvalue(extra$pred.perf.pval)
+qq = qvalue(extra$pval)
 #hist(qq$qvalues)</code></pre>
+<pre class="r"><code>devtools::source_gist(&quot;a925fea01b365a8c605e&quot;)</code></pre>
+<pre><code>ℹ Sourcing gist &quot;a925fea01b365a8c605e&quot;
+ℹ SHA-1 hash of file is &quot;01da6a099ce8e3272b3036fcf075b7afa5287dad&quot;</code></pre>
+<pre class="r"><code>qqR(extra$cor,nsam,main=&quot;correlation vs expected&quot;)</code></pre>
+<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-8-1">
+Past versions of unnamed-chunk-8-1.png
+</button>
+</p>
+<div id="fig-unnamed-chunk-8-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/sabrina-mi/PTRS-Rat-Analysis/blob/5db94f805593bca294b6e39fb4688cfc95dbd017/docs/figure/Br_EN_Validation.Rmd/unnamed-chunk-8-1.png" target="_blank">5db94f8</a>
+</td>
+<td>
+sabrina-mi
+</td>
+<td>
+2023-04-04
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <pre class="r"><code>extra$pred.perf.qval = qq$qvalues
 high_qual_genes = filter(extra, extra$pred.perf.qval &lt; .05)
-hist(high_qual_genes$pred.perf.R2, main=&quot;Histogram of R2 for qval &lt; genes&quot;)</code></pre>
-<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-10-1.png" width="672" style="display: block; margin: auto;" /></p>
+hist(high_qual_genes$R2, main=&quot;Histogram of R2 for qval &lt; genes&quot;)</code></pre>
+<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="comparing-well-predicted-genes" class="section level2">
 <h2>Comparing well-predicted genes</h2>
@@ -783,13 +864,15 @@ hist(high_qual_genes$pred.perf.R2, main=&quot;Histogram of R2 for qval &lt; gene
 <pre class="r"><code>library(readxl)
 R2 = suppressWarnings(read_excel(&quot;/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/santhanam-et-al-2022_supplementary-tables-ssr.xlsx&quot;, sheet = &quot;ST15 R2 betweeen Tissues&quot;, skip=1))
 
-hist(R2$`R2 in NAcc`, main=&quot;Histogram of R2 NAcc&quot;)</code></pre>
-<p><img src="figure/Br_EN_Validation.Rmd/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>full_R2 = inner_join(extra, R2, by=c(&quot;gene&quot;=&quot;Rat Ensembl ID&quot;))
+hist(R2$`R2 in NAcc`, main=&quot;Histogram of R2 NAcc&quot;)
+
+full_R2 = inner_join(extra, R2, by=c(&quot;gene&quot;=&quot;Rat Ensembl ID&quot;))
 full_R2 = select(full_R2, c(&quot;gene&quot;, &quot;pred.perf.R2&quot;, &quot;R2 in NAcc&quot;, &quot;R2 in IL&quot;, &quot;R2 in LHb&quot;, &quot;R2 in PL&quot;, &quot;R2 in OFC&quot;))</code></pre>
 </div>
 <div id="predict.py-performance" class="section level1">
 <h1>Predict.py Performance</h1>
+<pre class="r"><code>devtools::source_gist(&quot;a925fea01b365a8c605e&quot;)
+qqR(df$cor,nsam,main=&quot;correlation vs expected&quot;)</code></pre>
 <p>(The results here are a good sign for the model, but statistically
 meaningless, because the testing set is the same as the training
 set)</p>
@@ -809,8 +892,6 @@ for(i in 3:5603){
 }
 
 hist(df$cor)</code></pre>
-<pre class="r"><code>devtools::source_gist(&quot;a925fea01b365a8c605e&quot;)
-qqR(df$cor,nsam,main=&quot;correlation vs expected&quot;)</code></pre>
 <br>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
@@ -835,10 +916,10 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
- [1] readxl_1.4.2    qvalue_2.30.0   RSQLite_2.3.0   glue_1.6.2     
- [5] lubridate_1.9.2 forcats_1.0.0   stringr_1.5.0   dplyr_1.1.1    
- [9] purrr_1.0.1     tidyr_1.3.0     tibble_3.2.1    ggplot2_3.4.1  
-[13] tidyverse_2.0.0 readr_2.1.4     workflowr_1.7.0
+ [1] qvalue_2.30.0   RSQLite_2.3.0   glue_1.6.2      lubridate_1.9.2
+ [5] forcats_1.0.0   stringr_1.5.0   dplyr_1.1.1     purrr_1.0.1    
+ [9] tidyr_1.3.0     tibble_3.2.1    ggplot2_3.4.1   tidyverse_2.0.0
+[13] readr_2.1.4    
 
 loaded via a namespace (and not attached):
  [1] fs_1.6.1          usethis_2.1.6     devtools_2.4.5    bit64_4.0.5      
@@ -858,10 +939,10 @@ loaded via a namespace (and not attached):
 [57] parallel_4.2.2    promises_1.2.0.1  crayon_1.5.2      miniUI_0.1.1.1   
 [61] splines_4.2.2     hms_1.1.3         knitr_1.42        ps_1.7.3         
 [65] pillar_1.9.0      reshape2_1.4.4    pkgload_1.3.2     evaluate_0.20    
-[69] getPass_0.2-2     remotes_2.4.2     vctrs_0.6.1       tzdb_0.3.0       
-[73] httpuv_1.6.9      cellranger_1.1.0  gtable_0.3.3      cachem_1.0.7     
-[77] xfun_0.37         mime_0.12         xtable_1.8-4      gitcreds_0.1.2   
-[81] later_1.3.0       memoise_2.0.1     timechange_0.2.0  ellipsis_0.3.2   </code></pre>
+[69] remotes_2.4.2     vctrs_0.6.1       tzdb_0.3.0        httpuv_1.6.9     
+[73] gtable_0.3.3      cachem_1.0.7      xfun_0.37         mime_0.12        
+[77] xtable_1.8-4      gitcreds_0.1.2    later_1.3.0       memoise_2.0.1    
+[81] workflowr_1.7.0   timechange_0.2.0  ellipsis_0.3.2   </code></pre>
 </div>
 </div>
 
