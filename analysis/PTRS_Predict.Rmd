@@ -386,19 +386,3 @@ org.out = run_trait_cor(obs.exp,pred.ctimp,ext_weights(in.file),m_height,adj.hei
 org.out$pred.cors %>% filter(group=="obs.exp") %>% arrange(pvalue)
 
 ```
-
-
-```{r bmi wo tail corrs}
-print("trait: length with tail")
-measured.traits <- fread(traits) %>% filter(!is.na(length_w_tail_cm))
-m_height <- measured.traits %>% select(IID=rfid,HGHT=length_w_tail_cm)
-nn.dta <- measured.traits %>% 
-  select(IID=rfid,HGHT=length_w_tail_cm,SEX=sex)
-test <- lm(paste0("HGHT", " ~ ", " SEX"),
-             data = nn.dta)
-adj.height <- data.frame(IID = nn.dta$IID, HGHT = resid(test))
-
-org.out = run_trait_cor(obs.exp,pred.ctimp,ext_weights(in.file),m_height,adj.height)
-org.out$pred.cors %>% filter(group=="obs.exp") %>% arrange(pvalue)
-
-```
