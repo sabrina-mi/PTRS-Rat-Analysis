@@ -24,7 +24,7 @@ devtools::source_gist("1e9053c8f35c30396429350a08f33ea7")
 
 
 # Predict Traits with Yanyu's PTRS models
-```{r}
+```{r paths}
 traits <- c("height", "bmi")
 dir="/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/"
 
@@ -78,40 +78,14 @@ for(trait in traits) {
   return(pred_trait)
 }
 
-```
-
-
-## Compare with Human Results
-
-```{r, eval=FALSE}
-pgp_pred_expr <- read_tsv(dir %&% "SPrediXcan/PGP/PGP_Whole_Blood__predict.txt") %>% select(-c(FID))
 
 ```
 
-```{r, eval=FALSE}
-fn_pgp_trait = function(trait)
-{
-  weights <- read_tsv(dir %&% "PTRS-models/elastic_net_alpha_0.1_British.export_model/weights." %&% trait %&% ".tsv.gz") %>% rename(gene_name = gene_id)
-  # load phenotype data
-  db <- "/Users/sabrinami/Library/CloudStorage/Box-Box/imlab-data/data-Github/web-data/2021-04-21-personal-genomes-project-data/repgp-data.sqlite3"
-  sqlite.driver <- dbDriver("SQLite")
-  conn <- dbConnect(RSQLite::SQLite(), db)
-  dbListTables(conn)
-  users <- dbGetQuery(conn, 'select * from users')
-  dbDisconnect(conn)
-  pheno <- users  %>% select(c(sample, trait)) %>% na.omit()
-  n_genes = as.matrix(apply(weights[,2:ncol(weights)], 2, function(x) sum(x != 0 )))
-  pgp_pred_trait <- fn_generate_trait(pgp_pred_expr, weights)
-  pheno <- pheno[na.omit(match(rownames(pgp_pred_trait), pheno$sample)),]
-  return(list("pheno"= pheno, "pred_trait" = pgp_pred_trait, "n_genes" = n_genes))
-}
 
-
-```
 
 ## compute correlations
 
-```{r}
+```{r compute corr function, eval=FALSE}
 fn_corr = function(pheno, pred_trait, n_genes, RDS){
   trait_df <- data.frame(estimate = numeric(), pvalue = numeric(), model = character(), n_genes_in_model = numeric(), conf.int.min = numeric(), conf.int.max = numeric())
   tempo <- pred_trait[na.omit(match(pheno[,1], rownames(pred_trait))), ]
@@ -132,32 +106,7 @@ fn_corr = function(pheno, pred_trait, n_genes, RDS){
 ```
 
 
-```{r,eval=FALSE}
-for (trait in traits){
-  dfs <- fn_pgp_trait(trait)
-  pheno <- dfs$pheno
-  pred_trait <- dfs$pgp_pred_trait
-  n_genes <- dfs$n_genes
-  RDS <- data.dir %&% "corr_" %&% trait %&% "_indiv_PTRS.RDS"
-  trait_df <- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
-}
 
-
-```
-
-
-```{r, eval=FALSE}
-for (trait in traits){
-  dfs <- fn_pgp_trait(trait)
-  pheno <- dfs$pheno
-  pgp_pred_trait <- dfs$pred_trait
-  n_genes <- dfs$n_genes
-  RDS <- data.dir %&% "corr_" %&% trait %&% "_indiv_PTRS.RDS"
-  trait_df <- fn_corr(pheno, pgp_pred_trait,n_genes,RDS)
-}
-
-
-```
 
 
 ```{r}
@@ -179,12 +128,12 @@ pheno_file <- read.csv(data.dir %&% "phenotypes/obesity_upublished_data_raw_phen
 
 ```{r}
 traits <- c("height")
-rat_analogue <- c("length_w_tail_cm")
+rat_analogue <- c("length_wo_tail_cm")
 names(rat_analogue) <- traits
 
 ```
 
-```{r plot}
+```{r plot, eval=FALSE}
 for (trait in traits) {
   # data wrangling
   pheno <- pheno_file %>% dplyr::select(c(rfid, rat_analogue[[trait]])) %>% na.omit()
@@ -199,6 +148,257 @@ for (trait in traits) {
   trait_df <- fn_corr(pheno, pred_trait, n_genes, RDS)
   # plot
 }
+pred_length_w_tail=readRDS(results.dir %&% "rat_pred_" %&% trait %&% "_w_Human_best_PTRS.RDS")
 
-fn_corr_plot(results.dir %&% "corr_length_w_tail_cm_rat_PTRS.RDS", "Performance of PTRS for Rat Bodylength")
+```
+
+```{r}
+
+fn_corr_plot(results.dir %&% "corr_length_w_tail_cm_rat_PTRS.RDS", "Performance of PTRS for Rat Bodylength with Tail")
+```
+
+```{r}
+
+fn_corr_plot(results.dir %&% "corr_length_wo_tail_cm_rat_PTRS.RDS", "Performance of PTRS for Rat Bodylength without Tail")
+```
+
+
+# Festus PTRS
+
+
+
+```{r}
+library(rhdf5)
+library(data.table)
+library(tidyverse)
+res.dir = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/PTRS-models"
+in.file <- glue::glue("{res.dir}/spxcan2ptrs_original_scale_pt.GIANT_HEIGHT_YENGO_2022.Muscle_Skeletal.results.h5")
+h5ls(in.file)
+
+h5.data <- h5read(in.file, "/")
+bb = h5.data[["dataset_0"]][["betahat"]]
+ll = h5.data[["dataset_0"]][["lambda_seq"]]
+gg = h5.data[["genes"]]
+
+```
+
+```{r read observed pheno data}
+data.dir = "/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatData"
+traits <- glue::glue("{data.dir}/phenotypes/obesity_upublished_data_raw_phenotypes_PalmerLab.csv")
+measured.traits <- fread(traits) %>% filter(!is.na(length_wo_tail_cm))
+m_height <- measured.traits %>% select(IID=rfid,HGHT=length_wo_tail_cm)
+```
+
+
+
+```{r adjust for resid}
+nn.dta <- measured.traits %>% 
+  select(IID=rfid,HGHT=length_wo_tail_cm,SEX=sex)
+test <- lm(paste0("HGHT", " ~ ", " SEX"),
+             data = nn.dta)
+adj.height <- data.frame(IID = nn.dta$IID, HGHT = resid(test))
+
+
+```
+
+
+```{r obs gene expr}
+obs.file <- glue::glue("{data.dir}/phenotypes/gexBr.csv")
+obs.gene <- fread(obs.file)
+obs.gene <- rename(obs.gene, IID=X)
+orth.rats = fread("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/ortholog_genes_rats_humans.tsv")
+
+# filter for genes with human ortholog
+obs.exp <- obs.gene %>% select(c(IID, intersect(colnames(obs.gene), orth.rats$rnorvegicus_homolog_ensembl_gene) ))
+
+
+
+colnames(obs.exp)[2:ncol(obs.exp)] <- orth.rats[match(colnames(obs.exp)[2:ncol(obs.exp)], orth.rats$rnorvegicus_homolog_ensembl_gene), 1] %>% .[["ensembl_gene_id"]]
+
+```
+
+```{r pred expr}
+## predicted expression for rats with phenotype data
+pred.ctimp = fread("/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/RatXcan/Results/Br_EN__predict.txt", header=TRUE)
+pred.ctimp$IID = pred.ctimp$FID
+pred.ctimp = pred.ctimp %>% select(c(IID, intersect(colnames(pred.ctimp), orth.rats$rnorvegicus_homolog_ensembl_gene) ))
+
+colnames(pred.ctimp)[2:ncol(pred.ctimp)] <- orth.rats[match(colnames(pred.ctimp)[2:ncol(pred.ctimp)], orth.rats$rnorvegicus_homolog_ensembl_gene), 1] %>% .[["ensembl_gene_id"]]
+
+
+```
+
+
+
+## Festus's PTRS functions
+
+```{r}
+fast_generate_trait <- function(exp, weights){
+  # convert the predicted df into a matrix
+  test <- exp %>% column_to_rownames(var = "IID") %>%
+    as.matrix()
+
+  weights = weights %>% data.frame() %>%
+    column_to_rownames(var = "gene_name") %>% as.matrix()
+
+  # find the intersect
+  ww <- weights[intersect(colnames(test), rownames(weights)), ,drop = FALSE ]
+  test <- test[, intersect(colnames(test), rownames(ww))]
+
+  aa = test %*% ww
+  return(aa)
+}
+
+ext_weights <- function(hd5file) {
+  ## get atable of weights for different models from a h5 file
+  h5.data <- h5read(hd5file, "/")
+  bb = h5.data[["dataset_0"]][["betahat"]]
+  ll = h5.data[["dataset_0"]][["lambda_seq"]]
+  gg = h5.data[["genes"]]
+  
+  ptrs.weights <- bb %>% data.frame() %>% 
+    setnames(., names(.), gsub("\\..*","",gg)) %>% 
+    rownames_to_column(var = "model") %>% 
+    mutate(model = glue::glue("model_{model}")) %>% 
+    column_to_rownames(var = "model") %>% 
+    t() %>% data.frame() %>% 
+    rownames_to_column(var = "gene_name")
+  
+  return(ptrs.weights)
+}
+
+run_trait_cor <- function(obs.exp,pred.exp,ptrs.weights,m.trait,adj.height) {
+  ## gene.exp: gene expression df IID first col then genes with no version.
+  ## ptrs.weights: gene first col then models
+  ## m.trait: observed trait IID first col and trait measured second col
+  
+  pred.cors <- data.frame(model=as.character(), param = as.character(),
+                        group = as.character(), corr = as.numeric(),
+                        pvalue = as.numeric())
+  pred.heights <- m.trait
+  
+  for (mmm in names(ptrs.weights)[-1]) {
+    
+    ptrs.temp <- ptrs.weights %>% 
+      select(gene_name, all_of(mmm))
+    
+    ### OBSERVED GENE EXPRESSION
+    pred_height <- fast_generate_trait(obs.exp,ptrs.temp) %>% 
+      data.frame() %>% setnames(.,names(.), c("predicted")) %>% 
+      rownames_to_column(var = "IID")
+    
+    ## correlations 
+    all.cor <- m_height %>% 
+      inner_join(pred_height, by = "IID")
+    cor.result <- cor.test(all.cor$HGHT,all.cor$predicted)
+    pvalue <- cor.result$p.value
+    estimate <- cor.result$estimate
+    
+    pred.cors <- pred.cors %>% 
+      add_row(model = "obs.height",param = mmm, group = "obs.exp",
+              corr = estimate,pvalue = pvalue)
+    
+    ## Create a dataframe
+    pred.heights <- pred.heights %>% 
+      inner_join(pred_height %>% dplyr::rename(!!mmm := predicted)
+                 , by = "IID")
+    
+    ## Adjusted height
+    all.cor <- adj.height %>% 
+      inner_join(pred_height, by = "IID")
+    cor.result <- cor.test(all.cor$HGHT,all.cor$predicted)
+    pvalue <- cor.result$p.value
+    estimate <- cor.result$estimate
+    
+    pred.cors <- pred.cors %>% 
+      add_row(model = "adj.height", param = mmm, group = "obs.exp",
+              corr = estimate,pvalue = pvalue)
+    ######################################
+    ##PREDICTED GENE EXPRESSION
+    pred_height <- fast_generate_trait(pred.exp,ptrs.temp) %>% 
+      data.frame() %>% setnames(.,names(.), c("predicted")) %>% 
+      rownames_to_column(var = "IID")
+    
+    ## correlations 
+    all.cor <- m_height %>% 
+      inner_join(pred_height, by = "IID")
+    cor.result <- cor.test(all.cor$HGHT,all.cor$predicted)
+    pvalue <- cor.result$p.value
+    estimate <- cor.result$estimate
+    
+    pred.cors <- pred.cors %>% 
+      add_row(model = "obs.height",param = mmm, group = "pred.exp",
+              corr = estimate,pvalue = pvalue)
+    
+    ## Create a dataframe
+    pred.heights <- pred.heights %>% 
+      inner_join(pred_height %>% dplyr::rename(!!mmm := predicted)
+                 , by = "IID")
+    
+    ## Adjusted height
+    all.cor <- adj.height %>% 
+      inner_join(pred_height, by = "IID")
+    cor.result <- cor.test(all.cor$HGHT,all.cor$predicted)
+    pvalue <- cor.result$p.value
+    estimate <- cor.result$estimate
+    pred.cors <- pred.cors %>% 
+      add_row(model = "adj.height", param = mmm, group = "pred.exp",
+              corr = estimate,pvalue = pvalue)
+    
+  }
+  ff <- factor(unique(pred.cors$param))
+  plt <- pred.cors %>% 
+    mutate(param = factor(param, levels = ff)) %>% 
+    select(-pvalue) %>%  spread(group,corr) %>% 
+    ggplot( aes(x=param, group = model, color = model)) +
+      geom_line(aes(y=obs.exp),linetype="dotted") +
+      geom_line(aes(y=pred.exp)) +
+      theme_classic() +
+      theme(axis.text.x=element_blank()) 
+  print(plt)
+  
+  return(list(pred.cors=pred.cors,pred.heights=pred.heights))
+}
+
+```
+
+
+
+```{r plot cors}
+print("trait: length without tail")
+org.out = run_trait_cor(obs.exp,pred.ctimp,ext_weights(in.file),m_height,adj.height)
+org.out$pred.cors %>% filter(group=="obs.exp") %>% arrange(pvalue)
+```
+
+
+
+```{r length w tail corrs}
+print("trait: length with tail")
+measured.traits <- fread(traits) %>% filter(!is.na(length_w_tail_cm))
+m_height <- measured.traits %>% select(IID=rfid,HGHT=length_w_tail_cm)
+nn.dta <- measured.traits %>% 
+  select(IID=rfid,HGHT=length_w_tail_cm,SEX=sex)
+test <- lm(paste0("HGHT", " ~ ", " SEX"),
+             data = nn.dta)
+adj.height <- data.frame(IID = nn.dta$IID, HGHT = resid(test))
+
+org.out = run_trait_cor(obs.exp,pred.ctimp,ext_weights(in.file),m_height,adj.height)
+org.out$pred.cors %>% filter(group=="obs.exp") %>% arrange(pvalue)
+
+```
+
+
+```{r bmi wo tail corrs}
+print("trait: length with tail")
+measured.traits <- fread(traits) %>% filter(!is.na(length_w_tail_cm))
+m_height <- measured.traits %>% select(IID=rfid,HGHT=length_w_tail_cm)
+nn.dta <- measured.traits %>% 
+  select(IID=rfid,HGHT=length_w_tail_cm,SEX=sex)
+test <- lm(paste0("HGHT", " ~ ", " SEX"),
+             data = nn.dta)
+adj.height <- data.frame(IID = nn.dta$IID, HGHT = resid(test))
+
+org.out = run_trait_cor(obs.exp,pred.ctimp,ext_weights(in.file),m_height,adj.height)
+org.out$pred.cors %>% filter(group=="obs.exp") %>% arrange(pvalue)
+
 ```
