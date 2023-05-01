@@ -1,0 +1,231 @@
+---
+title: "Permutation_Test"
+author: "sabrina-mi"
+date: "2023-04-28"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r working directory}
+dir="/Users/sabrinami/Library/CloudStorage/Box-Box/rat-genomic-analysis/PTRS-2023/"
+
+```
+
+```{r preliminary definitions}
+suppressMessages(library(tidyverse))
+suppressMessages(library(glue))
+suppressMessages(library(data.table))
+suppressMessages(library(R.utils))
+suppressMessages(library(stringr))
+suppressMessages(library(RSQLite))
+suppressMessages(library(vroom))
+
+"%&%" = function(a,b) paste(a,b,sep="")
+headleft <-function(x,nc=4,...) {nc=min(nc,ncol(x)); head(x[,1:nc],...) }
+
+
+```
+
+
+
+```{r plotting functions}
+devtools::source_gist("a925fea01b365a8c605e")
+devtools::source_gist("38431b74c6c0bf90c12f")
+devtools::source_gist("115403f16bec0a0e871f3616d552ce9b")
+devtools::source_gist("fa55bc3b656f5273830afc4c7fe101a9")
+```
+
+
+```{r read pheno}
+pheno_heng_file = dir %&% "RatData/phenotypes/obesity_upublished_data_residuals_PalmerLab.csv"
+pheno_heng_df = read_csv(pheno_heng_file) %>% select(-`...1`)
+
+pheno_heng_df <- pheno_heng_df %>% select(IID=rfid,bmi_hen=bmi_w_tail,bodylen_heng=length_w_tail_cm) %>% filter(!is.na(bodylen_heng))
+rats_heng <- pheno_heng_df$IID
+trait_df <- pheno_heng_df %>% select(IID,bodylen = bodylen_heng) 
+```
+
+
+```{r orth mapping}
+orth.rats <- read_tsv(dir %&% "RatXcan/ortholog_genes_rats_humans.tsv", col_names = TRUE)
+
+```
+
+
+```{r Br genes predictability}
+sqlite <- dbDriver("SQLite")
+braindb <- dbConnect(sqlite, dir %&% "RatXcan/Br_elasticNet.db")
+extra <- dbGetQuery(braindb,"select * from extra")
+orth.rats <- orth.rats %>% left_join(extra,by=c("rnorvegicus_homolog_ensembl_gene"="gene")) %>% arrange(pred.perf.pval)
+dbDisconnect(braindb)
+
+```
+
+
+```{r read Br predicted expr}
+pred_expr_Br_hki <- vroom::vroom(dir %&% "RatXcan/Results/Br_EN__predict.txt") %>% select(-c(FID))
+object.size(pred_expr_Br_hki)/1e6
+dim(pred_expr_Br_hki)
+
+pred_expr_Br_hki <- pred_expr_Br_hki %>% filter(IID %in% rats_heng)
+dim(pred_expr_Br_hki)
+object.size(pred_expr_Br_hki)/1e6
+#saveRDS(pred_expr_Br_hki,file= dir %&% "RatXcan/Results/Br__predict_w_bodylength.RDS")
+```
+
+
+## Shuffle Weights
+
+```{r read ptrs weights}
+yan_weights_df <- read_tsv(dir %&% "PTRS-models/elastic_net_alpha_0.1_British.export_model/weights.height.tsv.gz")
+yan_weights_df <- yan_weights_df %>% separate(gene_id,sep="\\.",c("gene_id","ver")) %>% select(-ver) %>% rename(gene_name=gene_id)
+
+```
+
+
+```{r extract festus weights}
+library(rhdf5)
+in.file <- dir %&% "PTRS-models/spxcan2ptrs_original_scale_pt.GIANT_HEIGHT_YENGO_2022.Muscle_Skeletal.results.h5"
+
+ext_weights <- function(hd5file) {
+  ## get atable of weights for different models from a h5 file
+  h5.data <- h5read(hd5file, "/")
+  bb = h5.data[["dataset_0"]][["betahat"]]
+  ll = h5.data[["dataset_0"]][["lambda_seq"]]
+  gg = h5.data[["genes"]]
+  
+  ptrs.weights <- bb %>% data.frame() %>% 
+    setnames(., names(.), gsub("\\..*","",gg)) %>% 
+    rownames_to_column(var = "model") %>% 
+    mutate(model = glue::glue("model_{model}")) %>% 
+    column_to_rownames(var = "model") %>% 
+    t() %>% data.frame() %>% 
+    rownames_to_column(var = "gene_name")
+  
+  return(ptrs.weights)
+}
+
+fes_weights_df = ext_weights(in.file)
+
+#fes_weights_df = fes_weights_df %>% select(gene_name, all_of(model_name)) %>% rename(weight=model_name)
+```
+
+```{r}
+
+map_weight_and_calc_ptrs <- function(expr, weights,order_model_name="model_35")
+{
+  # ## change gene names in columns to human gene names
+  # ind <- match(colnames(expr)[-1], orth.rats$rnorvegicus_homolog_ensembl_gene) 
+  # colnames(expr)[-1] <- orth.rats$ensembl_gene_id[ind]
+
+  ## change weight genes to rat genes
+  ind = match(weights$gene_name, orth.rats$ensembl_gene_id)
+  weights$gene_name = orth.rats$rnorvegicus_homolog_ensembl_gene[ind]
+  ## keep only predicted genes
+  weights <- weights %>% filter(gene_name %in% colnames(expr)[-1])
+  
+  ## if gene is repeated, keep the one that has largest weight magnitude
+  weights <- droprep(
+    weights %>% 
+      filter(gene_name %in% colnames(expr)[-1]) %>% 
+      mutate(magni = abs(.data[[order_model_name]]) ), 
+    repvar="gene_name", 
+    sortvar="magni",
+    decreasing=TRUE) %>% 
+    select(-magni)
+  
+  ## call calc_ptrs(expr,weights)
+  calc_ptrs(expr,weights)
+}
+
+
+```
+
+Shuffle weights
+
+
+```{r}
+nsim = 1000
+ngenes = nrow(fes_weights_df)
+
+sim_ptrs_df <- function(ptrs.weights, model_name){
+  fes_weights_df = fes_weights_df %>% select(gene_name, all_of(model_name)) %>% rename(weight=model_name)
+  fes_weights_df$invnorm_weight = invnorm(fes_weights_df$weight)
+  sim_weights_mat = sample(fes_weights_df$invnorm_weight,nsim*ngenes,replace=TRUE) %>% matrix(ngenes,nsim)
+  colnames(sim_weights_mat) = paste0("sim_",1:nsim)
+  fes_weights_sim_df <- cbind(fes_weights_df,sim_weights_mat)
+  ptrs_Br_hki_feswei_df <- map_weight_and_calc_ptrs(pred_expr_Br_hki,fes_weights_sim_df,order_model_name="weight")
+}
+
+plot_trait <- function(ptrs.weights,model_name,res.dir){
+  ptrs_Br_hki_feswei_df = sim_ptrs_df(ptrs.weights,model_name)
+  ptrs_Br_hki_feswei_df %>% inner_join(trait_df,by=c("IID"="IID")) %>% ggplot(aes(invnorm_weight,bodylen))+geom_smooth() + theme_bw(base_size = 15)+ ggtitle("bodylength vs. invnorm fes " %&% model_name %&% " weights ptrs")
+  ggsave(res.dir %&% "invnorm_bodylen_" %&% model_name %&% ".png")
+  ptrs_Br_hki_feswei_df %>% inner_join(trait_df,by=c("IID"="IID")) %>% ggplot(aes(weight,bodylen))+geom_smooth() + theme_bw(base_size = 15) + ggtitle("bodylength vs. fes weights ptrs " %&% model_name)
+  ggsave(res.dir %&% "weights_bodylen_" %&% model_name %&% ".png")
+}
+
+```
+
+
+
+```{r}
+for (mmm in names(fes_weights_df)[-1]) {
+  plot_trait(fes_weights_df, mmm, dir %&% "PTRS-models/plots/")
+  break
+}
+
+```
+
+
+```{r corr with bodylength}
+
+for (mmm in names(fes_weights_df)[-1]) {
+  ptrs_Br_hki_feswei_df = sim_ptrs_df(fes_weights_df, mmm)
+  tempo = ptrs_Br_hki_feswei_df %>% inner_join(trait_df,by=c("IID"="IID")) 
+  print(mmm)
+  print("festus weights:")
+  print(cor.test(tempo$weight,tempo$bodylen))
+  print("invnorm:")
+  print(cor.test(tempo$invnorm_weight,tempo$bodylen))
+}
+
+```
+
+
+```{r}
+calc_cor_PTRS_trait_w_shuffled = function(traitdf, ptrsdf, ratlist,titulo=NULL,col_comp="invnorm_weight")
+{
+  cortemp = fast_cor_ptrs_trait(ptrsdf, traitdf %>% select(IID,bodylen), ratlist) %>% na.omit()
+  rango = range(c(cortemp$cor,0)) ## include zero in the plot
+  hist(cortemp$cor,main=titulo)
+  obs_cor = cortemp$cor[cortemp$model==col_comp]
+  abline(v = obs_cor,lwd=3,lty=3,col='blue')
+  print("top positive cor")
+  print(sort(cortemp$cor,decreasing=TRUE) %>% head(30))
+  print("top negative cor")
+  print(sort(cortemp$cor,decreasing=TRUE) %>% tail(30))
+  print("p-values")
+  print(sort(cortemp$pval,decreasing=FALSE) %>% head(30))
+  mtext(glue("empirical pval = {signif(mean(abs(cortemp$cor) > obs_cor),3)}"))
+  cortemp
+}
+
+
+
+
+```
+
+
+```{r}
+for (mmm in names(fes_weights_df)[-1]) {
+  ptrs_Br_hki_feswei_df = sim_ptrs_df(fes_weights_df, mmm)
+  print(mmm)
+  kk = calc_cor_PTRS_trait_w_shuffled(trait_df,ptrs_Br_hki_feswei_df, rats_heng,titulo="festus invnorm + shuffled weights")
+  abline(v=summary(kk$cor)[-4],col='black',lty=2)
+  kk %>% filter(model %in% c("weight","invnorm_weight"))
+}
+
+```
